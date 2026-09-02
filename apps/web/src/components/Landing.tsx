@@ -1,15 +1,99 @@
-import { ArrowRight, Bot, Check, MousePointer2, Rocket, Sparkles, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  Bot,
+  CalendarDays,
+  Check,
+  FileText,
+  LayoutTemplate,
+  MousePointer2,
+  Rocket,
+  ShoppingBag,
+  Sparkles,
+  Zap,
+} from "lucide-react";
+import { useEffect } from "react";
 
 export function Landing({ onStart }: { onStart: () => void }) {
+  useEffect(() => {
+    const scrollToHash = () => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      if (id === "") return;
+      requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+    };
+    scrollToHash();
+    window.addEventListener("hashchange", scrollToHash);
+    return () => window.removeEventListener("hashchange", scrollToHash);
+  }, []);
+
   return <div className="landing">
-    <header className="landing-nav"><a className="brand" href="#"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a><nav><a href="#how">Как работает</a><a href="#templates">Шаблоны</a><a href="#pricing">Тарифы</a></nav><button className="ghost-button" onClick={onStart}>Войти</button></header>
-    <section className="hero"><div className="eyebrow"><Sparkles size={15} /> Один вечер вместо месяца разработки</div><h1>Ваш бизнес — прямо<br />внутри <em>Telegram</em></h1><p>Соберите бота и Mini App без кода. Каталог, запись, заявки и автоматические ответы — всё уже связано между собой.</p><div className="hero-actions"><button className="primary-button large" onClick={onStart}>Создать бесплатно <ArrowRight size={18} /></button><span>Карта не нужна</span></div><div className="hero-proof"><span><Check /> Бесплатный конструктор</span><span><Check /> Запуск за 1 минуту</span><span><Check /> Хостинг включён</span></div>
-      <div className="hero-visual"><div className="floating-card card-one"><Zap /><span><b>Новая заявка</b><small>Анна · Запись на 15:00</small></span></div><div className="hero-phone"><div className="mini-telegram"><span className="avatar">S</span><b>Studio Nova</b></div><div className="mini-cover"><small>СТУДИЯ КРАСОТЫ</small><h3>Время для себя</h3><p>Выберите услугу и удобное время</p></div><div className="service-row"><span>Маникюр</span><b>от 1 500 ₽</b></div><div className="service-row"><span>Укладка</span><b>от 2 000 ₽</b></div><button>Записаться</button></div><div className="floating-card card-two"><Rocket /><span><b>Опубликовано</b><small>@studio_nova_bot работает</small></span></div></div>
-    </section>
-    <section className="steps" id="how"><div className="section-heading"><span>ПРОСТОЙ ПРОЦЕСС</span><h2>От идеи до работающего бота</h2><p>Мы спрятали техническую сложность. Вы занимаетесь содержанием.</p></div><div className="step-grid"><article><i>01</i><MousePointer2 /><h3>Выберите шаблон</h3><p>Каталог, запись, заявка или пустой проект.</p></article><article><i>02</i><Sparkles /><h3>Настройте под себя</h3><p>Меняйте тексты и блоки, сразу видя результат.</p></article><article><i>03</i><Rocket /><h3>Подключите бота</h3><p>Вставьте токен — остальное сделаем автоматически.</p></article></div></section>
-    <section className="pricing" id="pricing"><div className="section-heading"><span>ЧЕСТНЫЕ ТАРИФЫ</span><h2>Сначала соберите. Платите за запуск.</h2></div><div className="price-grid"><Price name="Конструктор" price="0 ₽" description="Чтобы спокойно собрать и проверить идею" items={["1 проект", "Все основные блоки", "Preview внутри Telegram"]} action="Начать бесплатно" onClick={onStart} /><Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Для одного проекта или бизнеса" items={["1 активный бот", "Хостинг и SSL", "Заявки и аналитика"]} action="Запустить бота" onClick={onStart} /><Price name="Три бота" price="650 ₽" suffix="/ месяц" description="Для нескольких проектов или клиентов" items={["3 активных бота", "Единый кабинет", "Всё из тарифа выше"]} action="Выбрать тариф" onClick={onStart} /></div></section>
-    <footer><a className="brand" href="#"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a><span>© 2026. Создано для бизнеса в Telegram.</span></footer>
+    <header className="landing-nav">
+      <a className="brand" href="#top" aria-label="TMA Studio — наверх"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a>
+      <nav aria-label="Навигация по странице">
+        <a href="#how">Как работает</a>
+        <a href="#templates">Шаблоны</a>
+        <a href="#pricing">Тарифы</a>
+      </nav>
+      <button className="ghost-button" onClick={onStart}>Войти</button>
+    </header>
+
+    <main>
+      <section className="hero" id="top">
+        <div className="hero-copy">
+          <div className="eyebrow"><Sparkles size={15} /> Один вечер вместо месяца разработки</div>
+          <h1>Ваш бизнес — прямо<br />внутри <em>Telegram</em></h1>
+          <p>Соберите бота и Mini App без кода. Каталог, запись, заявки и автоматические ответы — всё уже связано между собой.</p>
+          <div className="hero-actions"><button className="primary-button large" onClick={onStart}>Создать бесплатно <ArrowRight size={18} /></button><span>Карта не нужна</span></div>
+          <div className="hero-proof"><span><Check /> Бесплатный конструктор</span><span><Check /> Запуск за 1 минуту</span><span><Check /> Хостинг включён</span></div>
+        </div>
+
+        <div className="hero-visual" aria-label="Пример приложения Studio Nova">
+          <div className="floating-card card-one"><Zap /><span><b>Новая заявка</b><small>Анна · Запись на 15:00</small></span></div>
+          <div className="hero-phone">
+            <div className="mini-telegram"><span className="avatar">S</span><b>Studio Nova</b></div>
+            <div className="mini-cover"><small>СТУДИЯ КРАСОТЫ</small><h3>Время для себя</h3><p>Выберите услугу и удобное время</p></div>
+            <div className="service-row"><span>Маникюр</span><b>от 1 500 ₽</b></div>
+            <div className="service-row"><span>Укладка</span><b>от 2 000 ₽</b></div>
+            <button>Записаться</button>
+          </div>
+          <div className="floating-card card-two"><Rocket /><span><b>Опубликовано</b><small>@studio_nova_bot работает</small></span></div>
+        </div>
+      </section>
+
+      <section className="steps" id="how">
+        <div className="section-heading"><span>ПРОСТОЙ ПРОЦЕСС</span><h2>От идеи до работающего бота</h2><p>Мы спрятали техническую сложность. Вы занимаетесь содержанием.</p></div>
+        <div className="step-grid">
+          <article><i>01</i><MousePointer2 /><h3>Выберите шаблон</h3><p>Каталог, запись, заявка или пустой проект.</p></article>
+          <article><i>02</i><Sparkles /><h3>Настройте под себя</h3><p>Меняйте тексты и блоки, сразу видя результат.</p></article>
+          <article><i>03</i><Rocket /><h3>Подключите бота</h3><p>Вставьте токен — остальное сделаем автоматически.</p></article>
+        </div>
+      </section>
+
+      <section className="templates" id="templates">
+        <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Начните с подходящего шаблона</h2><p>Структура уже собрана — останется заменить тексты, цвета и фотографии.</p></div>
+        <div className="template-grid">
+          <Template icon={<ShoppingBag />} title="Каталог товаров" text="Карточки, цены, кнопки заказа и заявки." onClick={onStart} />
+          <Template icon={<CalendarDays />} title="Онлайн-запись" text="Услуги, форма записи и подтверждение в Telegram." onClick={onStart} />
+          <Template icon={<FileText />} title="Сбор заявок" text="Лендинг, квалифицирующая форма и контакты клиента." onClick={onStart} />
+          <Template icon={<LayoutTemplate />} title="Пустой проект" text="Чистая страница для собственного сценария." onClick={onStart} />
+        </div>
+      </section>
+
+      <section className="pricing" id="pricing">
+        <div className="section-heading"><span>ЧЕСТНЫЕ ТАРИФЫ</span><h2>Сначала соберите. Платите за запуск.</h2></div>
+        <div className="price-grid">
+          <Price name="Конструктор" price="0 ₽" description="Чтобы спокойно собрать и проверить идею" items={["1 проект", "Все основные блоки", "Preview внутри Telegram"]} action="Начать бесплатно" onClick={onStart} />
+          <Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Для одного проекта или бизнеса" items={["1 активный бот", "Хостинг и SSL", "Заявки и аналитика"]} action="Запустить бота" onClick={onStart} />
+          <Price name="Три бота" price="650 ₽" suffix="/ месяц" description="Для нескольких проектов или клиентов" items={["3 активных бота", "Единый кабинет", "Всё из тарифа выше"]} action="Выбрать тариф" onClick={onStart} />
+        </div>
+      </section>
+    </main>
+
+    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a><span>© 2026. Создано для бизнеса в Telegram.</span></footer>
   </div>;
+}
+
+function Template({ icon, title, text, onClick }: { icon: React.ReactNode; title: string; text: string; onClick: () => void }) {
+  return <article className="template-card"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button onClick={onClick}>Использовать шаблон <ArrowRight /></button></article>;
 }
 
 function Price({ name, price, suffix, description, items, action, featured, onClick }: { name: string; price: string; suffix?: string; description: string; items: string[]; action: string; featured?: boolean; onClick: () => void }) {
