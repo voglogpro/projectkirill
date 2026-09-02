@@ -7,5 +7,5 @@ const root = document.getElementById("app");
 if (root === null) throw new Error("App root is missing");
 telegram.initialize(); root.append(skeleton());
 const publicId = location.pathname.match(/\/(?:app|tma)\/([^/]+)/)?.[1] ?? new URLSearchParams(location.search).get("project") ?? "demo";
-const preview = new URLSearchParams(location.search).get("preview") ?? undefined;
+const preview = new URLSearchParams(location.search).get("preview") ?? new URLSearchParams(location.search).get("token") ?? undefined;
 void loadManifest(publicId, preview).then((manifest) => { document.title = manifest.project.name; renderApp(root, manifest); }).catch((reason: unknown) => { const screen = stateScreen("Не удалось открыть", reason instanceof Error ? reason.message : "Ошибка загрузки"); const retry = document.createElement("button"); retry.textContent = "Попробовать снова"; retry.addEventListener("click", () => location.reload()); screen.append(retry); root.replaceChildren(screen); });

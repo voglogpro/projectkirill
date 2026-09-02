@@ -12,8 +12,10 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect } from "react";
+import type { TemplateId } from "../types";
 
-export function Landing({ onStart }: { onStart: () => void }) {
+type StartIntent = { mode?: "register" | "login"; templateId?: TemplateId; plan?: "solo" | "trio" };
+export function Landing({ onStart }: { onStart: (intent?: StartIntent) => void }) {
   useEffect(() => {
     const scrollToHash = () => {
       const id = decodeURIComponent(location.hash.slice(1));
@@ -33,27 +35,27 @@ export function Landing({ onStart }: { onStart: () => void }) {
         <a href="#templates">Шаблоны</a>
         <a href="#pricing">Тарифы</a>
       </nav>
-      <button className="ghost-button" onClick={onStart}>Войти</button>
+      <button className="ghost-button" onClick={() => onStart({ mode: "login" })}>Войти</button>
     </header>
 
     <main>
       <section className="hero" id="top">
         <div className="hero-copy">
           <div className="eyebrow"><Sparkles size={15} /> Один вечер вместо месяца разработки</div>
-          <h1>Ваш бизнес — прямо<br />внутри <em>Telegram</em></h1>
-          <p>Соберите бота и Mini App без кода. Каталог, запись, заявки и автоматические ответы — всё уже связано между собой.</p>
-          <div className="hero-actions"><button className="primary-button large" onClick={onStart}>Создать бесплатно <ArrowRight size={18} /></button><span>Карта не нужна</span></div>
-          <div className="hero-proof"><span><Check /> Бесплатный конструктор</span><span><Check /> Запуск за 1 минуту</span><span><Check /> Хостинг включён</span></div>
+          <h1>Соберите бота и Mini App<br />для <em>Telegram</em> — без кода</h1>
+          <p>Каталог, онлайн-запись или сбор заявок. Настройте всё визуально, подключите бота и запустите за несколько минут.</p>
+          <div className="hero-actions"><button className="primary-button large" onClick={() => onStart()}>Начать бесплатно <ArrowRight size={18} /></button><a className="outline-button large" href="#templates">Посмотреть шаблоны</a></div>
+          <div className="hero-proof"><span><Check /> Конструктор — бесплатно</span><span><Check /> Хостинг от 350 ₽/мес</span><span><Check /> Оплата только перед запуском</span></div>
         </div>
 
         <div className="hero-visual" aria-label="Пример приложения Studio Nova">
           <div className="floating-card card-one"><Zap /><span><b>Новая заявка</b><small>Анна · Запись на 15:00</small></span></div>
           <div className="hero-phone">
             <div className="mini-telegram"><span className="avatar">S</span><b>Studio Nova</b></div>
-            <div className="mini-cover"><small>СТУДИЯ КРАСОТЫ</small><h3>Время для себя</h3><p>Выберите услугу и удобное время</p></div>
+            <div className="mini-cover"><small>СТУДИЯ КРАСОТЫ</small><strong>Время для себя</strong><p>Выберите услугу и удобное время</p></div>
             <div className="service-row"><span>Маникюр</span><b>от 1 500 ₽</b></div>
             <div className="service-row"><span>Укладка</span><b>от 2 000 ₽</b></div>
-            <button>Записаться</button>
+            <button onClick={() => onStart({ templateId: "booking" })}>Записаться</button>
           </div>
           <div className="floating-card card-two"><Rocket /><span><b>Опубликовано</b><small>@studio_nova_bot работает</small></span></div>
         </div>
@@ -71,29 +73,29 @@ export function Landing({ onStart }: { onStart: () => void }) {
       <section className="templates" id="templates">
         <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Начните с подходящего шаблона</h2><p>Структура уже собрана — останется заменить тексты, цвета и фотографии.</p></div>
         <div className="template-grid">
-          <Template icon={<ShoppingBag />} title="Каталог товаров" text="Карточки, цены, кнопки заказа и заявки." onClick={onStart} />
-          <Template icon={<CalendarDays />} title="Онлайн-запись" text="Услуги, форма записи и подтверждение в Telegram." onClick={onStart} />
-          <Template icon={<FileText />} title="Сбор заявок" text="Лендинг, квалифицирующая форма и контакты клиента." onClick={onStart} />
-          <Template icon={<LayoutTemplate />} title="Пустой проект" text="Чистая страница для собственного сценария." onClick={onStart} />
+          <Template icon={<ShoppingBag />} title="Каталог товаров" text="Карточки, цены, кнопки заказа и заявки." onClick={() => onStart({ templateId: "catalog" })} />
+          <Template icon={<CalendarDays />} title="Онлайн-запись" text="Услуги, форма записи и подтверждение в Telegram." onClick={() => onStart({ templateId: "booking" })} />
+          <Template icon={<FileText />} title="Сбор заявок" text="Лендинг, квалифицирующая форма и контакты клиента." onClick={() => onStart({ templateId: "leads" })} />
+          <Template icon={<LayoutTemplate />} title="Пустой проект" text="Чистая страница для собственного сценария." onClick={() => onStart({ templateId: "blank" })} />
         </div>
       </section>
 
       <section className="pricing" id="pricing">
         <div className="section-heading"><span>ЧЕСТНЫЕ ТАРИФЫ</span><h2>Сначала соберите. Платите за запуск.</h2></div>
         <div className="price-grid">
-          <Price name="Конструктор" price="0 ₽" description="Чтобы спокойно собрать и проверить идею" items={["1 проект", "Все основные блоки", "Preview внутри Telegram"]} action="Начать бесплатно" onClick={onStart} />
-          <Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Для одного проекта или бизнеса" items={["1 активный бот", "Хостинг и SSL", "Заявки и аналитика"]} action="Запустить бота" onClick={onStart} />
-          <Price name="Три бота" price="650 ₽" suffix="/ месяц" description="Для нескольких проектов или клиентов" items={["3 активных бота", "Единый кабинет", "Всё из тарифа выше"]} action="Выбрать тариф" onClick={onStart} />
+          <Price name="Конструктор" price="0 ₽" description="Чтобы спокойно собрать и проверить идею" items={["1 черновик", "Все основные блоки", "Интерактивный preview"]} action="Собрать бесплатно" onClick={() => onStart()} />
+          <Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Для одного проекта или бизнеса" items={["1 активный бот", "Хостинг и SSL", "Входящие заявки"]} action="Запустить 1 бота" onClick={() => onStart({ plan: "solo" })} />
+          <Price name="Три бота" price="650 ₽" suffix="/ месяц" description="Для нескольких проектов или клиентов" items={["До 3 активных ботов", "Единый кабинет", "Всё из тарифа выше"]} action="Запустить до 3 ботов" onClick={() => onStart({ plan: "trio" })} />
         </div>
       </section>
     </main>
 
-    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a><span>© 2026. Создано для бизнеса в Telegram.</span></footer>
+    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span>TMA Studio</a><div className="footer-links"><a href="mailto:support@tmastudio.ru">Помощь</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a></div><span>© 2026. Для бизнеса в Telegram.</span></footer>
   </div>;
 }
 
 function Template({ icon, title, text, onClick }: { icon: React.ReactNode; title: string; text: string; onClick: () => void }) {
-  return <article className="template-card"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button onClick={onClick}>Использовать шаблон <ArrowRight /></button></article>;
+  return <article className="template-card"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button onClick={onClick}>Начать с этого шаблона <ArrowRight /></button></article>;
 }
 
 function Price({ name, price, suffix, description, items, action, featured, onClick }: { name: string; price: string; suffix?: string; description: string; items: string[]; action: string; featured?: boolean; onClick: () => void }) {

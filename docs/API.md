@@ -11,11 +11,13 @@
 - `PUT|DELETE /v1/projects/:projectId/pages/:pageId`
 - `POST /v1/projects/:projectId/preview-grants`
 - `POST /v1/projects/:projectId/publish`
+- `GET /v1/projects/:projectId/submissions` — последние 500 заявок владельца;
 - `GET /v1/public/apps/:publicId`
 
 ## Telegram
 
 - `POST /v1/bot-connections/validate` — бесплатная проверка токена, без сохранения;
+- `GET /v1/bot-connections/:projectId` — статус подключённого бота для кабинета;
 - `POST /v1/bot-connections` — платная активация, шифрование токена, menu button и webhook;
 - `POST /v1/telegram/webhooks/:publicIntegrationId` — ingress с проверкой секретного заголовка;
 - `POST /v1/public/apps/:publicId/forms` — проверка Telegram `initData` и сохранение формы.

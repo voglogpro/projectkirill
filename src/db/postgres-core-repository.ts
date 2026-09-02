@@ -197,6 +197,7 @@ export class PostgresCoreRepository implements CoreRepository {
              r.content_hash AS release_hash, r.created_at AS published_at, pg.id AS page_id,
              rp.slug AS page_slug, rp.title AS page_title, pv.document
       FROM projects p
+      JOIN billing_subscriptions bs ON bs.user_id = p.owner_user_id AND bs.status = 'active' AND bs.current_period_end > now()
       JOIN releases r ON r.id = p.published_release_id AND r.project_id = p.id
       JOIN release_pages rp ON rp.release_id = r.id AND rp.project_id = p.id
       JOIN pages pg ON pg.id = rp.page_id AND pg.project_id = p.id

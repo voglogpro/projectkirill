@@ -61,7 +61,7 @@ export async function buildApp() {
       reply.header("access-control-allow-origin", origin);
       reply.header("vary", "Origin");
       reply.header("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-      reply.header("access-control-allow-headers", "Authorization,Content-Type");
+      reply.header("access-control-allow-headers", "Authorization,Content-Type,X-Telegram-Init-Data,X-Idempotency-Key");
     }
     if (request.method === "OPTIONS") {
       if (origin === undefined || !allowedOrigins.has(origin)) return await reply.code(403).send();
@@ -99,7 +99,7 @@ export async function buildApp() {
   await registerCoreRoutes(app, coreService, accessTokens);
   await registerBillingRoutes(app, billingService, accessTokens);
   await registerBotRoutes(app, connectBotService, accessTokens);
-  await registerFormRoutes(app, formService);
+  await registerFormRoutes(app, formService, accessTokens);
   await registerTelegramWebhookRoutes(app, new TelegramWebhookService(new PostgresTelegramUpdateRepository(sql)));
 
   if (config.RUN_TELEGRAM_WORKER) {

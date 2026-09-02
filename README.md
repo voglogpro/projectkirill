@@ -6,14 +6,19 @@ Self-service SaaS-конструктор Telegram Mini Apps: лендинг, л�
 
 - регистрация, вход, короткий access token и ротация непрозрачных refresh token;
 - бесплатное создание одного проекта и редактирование JSON-дерева блоков;
+- пять разных стартовых сценариев, onboarding, несколько страниц и готовые секции;
 - блоки: заголовок, текст, изображение, кнопка, товар и форма;
+- undo/redo, изменение порядка, полный инспектор действий и интерактивный preview;
+- облачное автосохранение, восстановление сессии и изолированный локальный demo;
 - optimistic locking черновиков, неизменяемые релизы и публичный manifest;
-- TMA Core без UI-фреймворка: `3.69 kB gzip` JavaScript, темы Telegram, `ready/expand`, haptics;
+- TMA Core без UI-фреймворка: около `4.2 kB gzip` JavaScript, темы Telegram, `ready/expand`, haptics и Back Button;
 - серверная проверка `initData` по HMAC-SHA256 и приём заявок из форм;
 - проверка bot token через `getMe`, AES-256-GCM envelope encryption;
 - автоматические `setChatMenuButton` и `setWebhook`, секрет webhook, дедупликация updates и worker `/start`;
 - тарифные лимиты на сервере, YooKassa checkout и проверка webhook повторным запросом к API провайдера;
 - responsive лендинг, кабинет, редактор и трёхшаговый мастер запуска.
+- рабочие разделы бота, настроек, помощи и inbox заявок с экспортом CSV;
+- публичное приложение и приём форм автоматически закрываются после окончания оплаченного периода.
 
 ## Локальный запуск
 
@@ -44,13 +49,13 @@ npm.cmd test
 npm.cmd run build
 ```
 
-Сейчас проходят 46 backend-тестов; production-сборка панели — около `73 kB gzip`, TMA Core — `3.69 kB gzip` JavaScript.
+Проверки включают backend, шаблоны конструктора, media-схему и preview manifest. Production-сборка панели — около `84 kB gzip`, TMA Core — около `4.2 kB gzip` JavaScript.
 
 ## Production-конфигурация
 
 1. Применить все SQL-файлы из `migrations` по порядку.
-2. Разместить `apps/web/dist` на домене панели и `apps/miniapp/dist` на домене Mini App/CDN.
-3. Запустить `dist/server.js` за reverse proxy и PostgreSQL/PgBouncer.
+2. На BotHost корневой `index.js` сам раздаёт `apps/web/dist` и `apps/miniapp/dist`; отдельный CDN не обязателен.
+3. Запустить `index.js` за HTTPS вместе с PostgreSQL/Neon.
 4. Передать секреты через secret manager, а `LocalAesKek` заменить адаптером KMS/Vault Transit.
 5. Установить `PAYMENT_PROVIDER=yookassa`, `YOOKASSA_SHOP_ID` и `YOOKASSA_SECRET_KEY`.
 6. Направить YooKassa webhook на `https://<api>/v1/billing/webhooks/yookassa`.

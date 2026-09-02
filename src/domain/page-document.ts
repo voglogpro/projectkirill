@@ -49,8 +49,10 @@ export const mediaBlockSchema = z
     type: z.literal("media"),
     props: z
       .object({
-        assetId: z.uuid(),
-        kind: z.enum(["image", "video"]),
+        // MVP media is referenced by a public HTTPS URL. This keeps BotHost
+        // stateless; a managed object-storage upload can replace it later.
+        url: z.url().max(2048),
+        kind: z.literal("image"),
         alt: z.string().max(300).default(""),
         aspectRatio: z.enum(["1:1", "4:3", "16:9", "auto"]).default("auto"),
       })

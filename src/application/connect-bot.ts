@@ -32,6 +32,7 @@ export interface BotConnectionRepository {
   }): Promise<{ integrationId: string; publicIntegrationId?: string }>;
   markActive(integrationId: string): Promise<void>;
   markError(integrationId: string, reason: string): Promise<void>;
+  getOwned(projectId: string, ownerUserId: string): Promise<{ botUsername?: string; botFirstName: string; miniAppUrl: string; status: "configuring" | "active" | "error" | "revoked" } | null>;
 }
 
 export interface BotActivationEntitlementGate {
@@ -62,6 +63,10 @@ export class ConnectBotService {
     if (project === null) throw new NotFoundError("Project not found");
     const bot = await this.telegram.getMe(input.botToken);
     return { botId: bot.id, firstName: bot.firstName, ...(bot.username === undefined ? {} : { username: bot.username }) };
+  }
+
+  public getStatus(ownerUserId: string, projectId: string) {
+    return this.repository.getOwned(z.uuid().parse(projectId), z.uuid().parse(ownerUserId));
   }
 
   public async execute(ownerUserId: string, untrustedInput: unknown): Promise<ConnectBotResult> {

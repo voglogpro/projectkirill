@@ -1,28 +1,96 @@
-import { useCallback, useState } from "react";
-import { ensureRemoteProject, hasSession, saveRemotePage } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import { createRemoteProject, ensureRemoteProject, hasSession, listRemoteProjects, loadRemoteProject, saveRemoteProject } from "./api";
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
 import { Landing } from "./components/Landing";
 import { LaunchModal } from "./components/LaunchModal";
-import { loadProject } from "./store";
-import type { ProjectState } from "./types";
+import { LegalPage } from "./components/LegalPage";
+import { Onboarding } from "./components/Onboarding";
+import { PreviewModal } from "./components/PreviewModal";
+import { createProjectFromTemplate, loadProject, saveProject } from "./store";
+import type { ProjectState, TemplateId } from "./types";
 
-type Screen = "landing" | "dashboard" | "builder";
+type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "legal";
+type StartIntent = { mode?: "register" | "login"; templateId?: TemplateId; plan?: "solo" | "trio" };
+const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", legal: "/privacy" };
+function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>(() => location.pathname.startsWith("/builder") ? "builder" : location.pathname.startsWith("/app") ? "dashboard" : "landing");
+  const [screen, setScreen] = useState<Screen>(() => screenFromPath(location.pathname));
   const [project, setProject] = useState<ProjectState>(loadProject);
+  const [intent, setIntent] = useState<StartIntent>({});
   const [launchOpen, setLaunchOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const navigate = useCallback((next: Screen) => { setScreen(next); history.pushState({}, "", next === "landing" ? "/" : next === "dashboard" ? "/app" : "/builder"); }, []);
-  const updateProject = useCallback((next: ProjectState) => setProject(next), []);
-  const start = () => { if (hasSession()) navigate("dashboard"); else setAuthOpen(true); };
-  const launch = async (current: ProjectState = project) => {
+  const [busy, setBusy] = useState(false);
+  const [resumeLaunch, setResumeLaunch] = useState(false);
+  const [toast, setToast] = useState<string>();
+
+  const navigate = useCallback((next: Screen, replace = false) => { setScreen(next); history[replace ? "replaceState" : "pushState"]({}, "", routeFor[next]); }, []);
+  useEffect(() => { const pop = () => setScreen(screenFromPath(location.pathname)); addEventListener("popstate", pop); return () => removeEventListener("popstate", pop); }, []);
+  useEffect(() => { if (!location.pathname.startsWith("/billing/return")) return; setToast("Возвращаемся в мастер и проверяем оплату…"); try { const channel = new BroadcastChannel("tma-studio-payment"); channel.postMessage({ type: "payment-return" }); channel.close(); } catch { /* The launch modal still has a manual status check. */ } }, []);
+  useEffect(() => { if ((screen !== "dashboard" && screen !== "builder") || !hasSession()) return; let active = true; void loadRemoteProject(project.id).catch(() => ensureRemoteProject(project)).then((remote) => { if (active) updateProject(remote); }).catch((reason) => { if (active) setToast(messageFrom(reason, "Не удалось восстановить проект")); }); return () => { active = false; }; }, []); // restore the cloud draft after a direct URL reload
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(undefined), 4000); return () => clearTimeout(timer); }, [toast]);
+
+  const updateProject = useCallback((next: ProjectState) => { setProject(next); saveProject(next); }, []);
+
+  async function start(nextIntent: StartIntent = {}) {
+    setIntent(nextIntent);
     if (!hasSession()) { setAuthOpen(true); return; }
-    const synced = await saveRemotePage(current);
-    setProject(synced);
-    setLaunchOpen(true);
-  };
-  return <>{screen === "landing" && <Landing onStart={start} />}{screen === "dashboard" && <Dashboard project={project} onEdit={() => navigate("builder")} onLaunch={() => void launch()} onHome={() => navigate("landing")} />}{screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onLaunch={(current) => void launch(current)} />}{authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuthenticated={async () => { const remote = await ensureRemoteProject(project); setProject(remote); setAuthOpen(false); navigate("dashboard"); }} onDemo={() => { setAuthOpen(false); navigate("dashboard"); }} />}{launchOpen && <LaunchModal projectId={project.id} onClose={() => setLaunchOpen(false)} />}</>;
+    if (nextIntent.templateId) { navigate("onboarding"); return; }
+    await openWorkspace();
+  }
+
+  async function openWorkspace() {
+    setBusy(true);
+    try { const remote = await ensureRemoteProject(project); updateProject(remote); navigate("dashboard"); }
+    catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); }
+    finally { setBusy(false); }
+  }
+
+  async function afterAuth() {
+    setAuthOpen(false); setBusy(true);
+    try {
+      const projects = await listRemoteProjects();
+      if (resumeLaunch && projects.length === 0) { const remote = await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); }
+      else if (intent.templateId) navigate("onboarding");
+      else if (projects.length === 0) navigate("onboarding");
+      else { const remote = await loadRemoteProject(projects[0]!.id); updateProject(remote); navigate("dashboard"); }
+    } catch (reason) { setToast(messageFrom(reason, "Не удалось загрузить кабинет")); }
+    finally { setBusy(false); }
+  }
+
+  async function finishOnboarding(templateId: TemplateId, name: string) {
+    setBusy(true);
+    const local = createProjectFromTemplate(templateId, name);
+    try {
+      const next = hasSession() ? await createRemoteProject(local) : local;
+      updateProject(next); navigate("builder"); setToast("Проект создан — начните с замены текста под свой бизнес");
+    } catch (reason) { setToast(messageFrom(reason, "Не удалось создать проект")); }
+    finally { setBusy(false); }
+  }
+
+  async function launch(current: ProjectState = project) {
+    if (!hasSession()) { setResumeLaunch(true); setAuthOpen(true); return; }
+    setBusy(true);
+    try { const synced = await saveRemoteProject(current); updateProject(synced); setLaunchOpen(true); }
+    catch (reason) { setToast(`Не удалось сохранить перед запуском: ${messageFrom(reason, "попробуйте ещё раз")}`); }
+    finally { setBusy(false); }
+  }
+  function preview(current: ProjectState = project) { const next = { ...current, previewed: true }; updateProject(next); setPreviewOpen(true); }
+
+  return <>
+    {screen === "landing" && <Landing onStart={(value) => void start(value)} />}
+    {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
+    {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("landing")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
+    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
+    {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => setAuthOpen(false)} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); navigate("onboarding"); }} />}
+    {launchOpen && <LaunchModal projectId={project.id} initialPlan={intent.plan} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl }); setLaunchOpen(false); setToast("Бот опубликован и готов принимать клиентов"); }} />}
+    {previewOpen && <PreviewModal project={project} onClose={() => setPreviewOpen(false)} />}
+    {busy && <div className="global-busy" role="status">Сохраняем…</div>}
+    {toast && <div className="toast" role="status">{toast}</div>}
+  </>;
 }
+function messageFrom(reason: unknown, fallback: string) { return reason instanceof Error ? reason.message : fallback; }

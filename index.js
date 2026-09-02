@@ -14,7 +14,9 @@ const miniAppRoot = resolve("apps/miniapp/dist");
 
 app.get("/assets/*", async (request, reply) => sendAsset(reply, webAssetsRoot, request.params["*"]));
 app.get("/miniapp-assets/*", async (request, reply) => sendAsset(reply, miniAppRoot, request.params["*"]));
-app.get("/app", async (_request, reply) => sendIndex(reply, miniAppRoot));
+app.get("/robots.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("User-agent: *\nAllow: /\n"));
+app.get("/llms.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("# TMA Studio\n\nNo-code constructor for Telegram bots and Mini Apps. Users can build a draft for free and pay only when publishing.\n"));
+app.get("/app", async (_request, reply) => reply.code(302).header("location", "/workspace").send());
 app.get("/app/*", async (_request, reply) => sendIndex(reply, miniAppRoot));
 
 app.setNotFoundHandler(async (request, reply) => {

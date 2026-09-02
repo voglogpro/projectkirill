@@ -96,4 +96,15 @@ export class PostgresBotConnectionRepository implements BotConnectionRepository 
       WHERE id = ${integrationId}
     `;
   }
+
+  public async getOwned(projectId: string, ownerUserId: string) {
+    const rows = await this.sql<Array<{ bot_username: string | null; bot_first_name: string; mini_app_url: string; status: "configuring" | "active" | "error" | "revoked" }>>`
+      SELECT bi.bot_username, bi.bot_first_name, bi.mini_app_url, bi.status
+      FROM bot_integrations bi JOIN projects p ON p.id = bi.project_id
+      WHERE bi.project_id = ${projectId} AND p.owner_user_id = ${ownerUserId}
+      LIMIT 1
+    `;
+    const row = rows[0];
+    return row === undefined ? null : { ...(row.bot_username === null ? {} : { botUsername: row.bot_username }), botFirstName: row.bot_first_name, miniAppUrl: row.mini_app_url, status: row.status };
+  }
 }

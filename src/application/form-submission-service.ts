@@ -20,6 +20,7 @@ export interface FormConnection { projectId: string; encryptedToken: unknown }
 export interface FormSubmissionRepository {
   getActiveConnection(publicId: string): Promise<FormConnection | null>;
   store(input: { requestId: string; projectId: string; pageId: string; formKey: string; telegramUserId?: string; values: Record<string, string | boolean> }): Promise<"stored" | "duplicate">;
+  listOwned(ownerUserId: string, projectId: string): Promise<Array<{ id: string; formKey: string; pageTitle: string; telegramUserId?: string; values: Record<string, string | boolean>; createdAt: string }>>;
 }
 
 export class FormSubmissionError extends DomainError {
@@ -46,6 +47,10 @@ export class FormSubmissionService {
     const normalized = validateValues(form.props.fields, input.values);
     const outcome = await this.repository.store({ requestId, projectId: connection.projectId, pageId: input.pageId, formKey: input.formKey, ...(telegramUserId === undefined ? {} : { telegramUserId }), values: normalized });
     return { accepted: true, duplicate: outcome === "duplicate" } as const;
+  }
+
+  public list(ownerUserId: string, projectId: string) {
+    return this.repository.listOwned(z.uuid().parse(ownerUserId), z.uuid().parse(projectId));
   }
 }
 
