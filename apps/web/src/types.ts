@@ -2,6 +2,7 @@ export type BlockType = "heading" | "text" | "button" | "product" | "form" | "me
 export type TemplateId = "catalog" | "booking" | "leads" | "services" | "blank";
 export type BuilderTab = "blocks" | "pages" | "sections";
 export type DashboardSection = "overview" | "bot" | "leads" | "design" | "settings" | "help";
+export type BotConnectionStatus = "configuring" | "active" | "error" | "revoked";
 
 export type BlockAction =
   | { kind: "url"; url: string }
@@ -38,10 +39,12 @@ export interface ProjectState {
   activePageId?: string;
   botUsername?: string;
   miniAppUrl?: string;
+  botStatus?: BotConnectionStatus;
   plan: "free" | "solo" | "trio";
   templateId?: TemplateId;
   updatedAt?: string;
   previewed?: boolean;
+  hasPendingChanges?: boolean;
 }
 
 export interface Lead {

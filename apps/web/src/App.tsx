@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { createRemoteProject, ensureRemoteProject, hasSession, listRemoteProjects, loadRemoteProject, saveRemoteProject } from "./api";
+import { createRemoteProject, ensureRemoteProject, getEntitlement, hasSession, listRemoteProjects, loadRemoteProject, publishProject, saveRemoteProject } from "./api";
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
@@ -53,7 +53,7 @@ export function App() {
     setAuthOpen(false); setBusy(true);
     try {
       const projects = await listRemoteProjects();
-      if (resumeLaunch && projects.length === 0) { const remote = await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); }
+      if (resumeLaunch) { const remote = projects.some((item) => item.id === project.id) ? await saveRemoteProject(project) : await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); }
       else if (intent.templateId) navigate("onboarding");
       else if (projects.length === 0) navigate("onboarding");
       else { const remote = await loadRemoteProject(projects[0]!.id); updateProject(remote); navigate("dashboard"); }
@@ -74,8 +74,20 @@ export function App() {
   async function launch(current: ProjectState = project) {
     if (!hasSession()) { setResumeLaunch(true); setAuthOpen(true); return; }
     setBusy(true);
-    try { const synced = await saveRemoteProject(current); updateProject(synced); setLaunchOpen(true); }
-    catch (reason) { setToast(`Не удалось сохранить перед запуском: ${messageFrom(reason, "попробуйте ещё раз")}`); }
+    try {
+      const synced = await saveRemoteProject(current);
+      const entitlement = await getEntitlement();
+      const ready = { ...synced, plan: entitlement.planCode };
+      updateProject(ready);
+      if (ready.botUsername && ready.botStatus === "active" && entitlement.canPublish) {
+        await publishProject(ready.id);
+        updateProject({ ...ready, status: "active", previewed: true, hasPendingChanges: false });
+        setToast("Изменения опубликованы — Mini App уже обновлён");
+        return;
+      }
+      setLaunchOpen(true);
+    }
+    catch (reason) { setToast(`Не удалось подготовить публикацию: ${messageFrom(reason, "попробуйте ещё раз")}`); }
     finally { setBusy(false); }
   }
   function preview(current: ProjectState = project) { const next = { ...current, previewed: true }; updateProject(next); setPreviewOpen(true); }
@@ -87,7 +99,7 @@ export function App() {
     {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
     {screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => setAuthOpen(false)} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); navigate("onboarding"); }} />}
-    {launchOpen && <LaunchModal projectId={project.id} initialPlan={intent.plan} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl }); setLaunchOpen(false); setToast("Бот опубликован и готов принимать клиентов"); }} />}
+    {launchOpen && <LaunchModal projectId={project.id} initialPlan={project.plan === "trio" ? "trio" : intent.plan} existingBot={project.botUsername && project.botStatus === "active" ? { username: project.botUsername, miniAppUrl: project.miniAppUrl } : undefined} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl, botStatus: "active", previewed: true, hasPendingChanges: false }); setToast("Бот опубликован и готов принимать клиентов"); }} />}
     {previewOpen && <PreviewModal project={project} onClose={() => setPreviewOpen(false)} />}
     {busy && <div className="global-busy" role="status">Сохраняем…</div>}
     {toast && <div className="toast" role="status">{toast}</div>}

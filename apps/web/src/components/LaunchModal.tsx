@@ -4,15 +4,16 @@ import { activateBot, createCheckout, getEntitlement, publishProject, validateBo
 
 type Plan = "solo" | "trio";
 
-export function LaunchModal({ projectId, initialPlan = "solo", onClose, onLaunched }: { projectId: string; initialPlan?: Plan; onClose: () => void; onLaunched: (result: { plan: Plan; botUsername?: string; miniAppUrl: string }) => void }) {
-  const [step, setStep] = useState(1);
+export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onClose, onLaunched }: { projectId: string; initialPlan?: Plan; existingBot?: { username: string; miniAppUrl?: string }; onClose: () => void; onLaunched: (result: { plan: Plan; botUsername?: string; miniAppUrl: string }) => void }) {
+  const [step, setStep] = useState(existingBot ? 2 : 1);
   const [token, setToken] = useState("");
   const [plan, setPlan] = useState<Plan>(initialPlan);
-  const [bot, setBot] = useState<{ firstName: string; username?: string }>();
-  const [launchUrl, setLaunchUrl] = useState<string>();
+  const [bot, setBot] = useState<{ firstName: string; username?: string } | undefined>(existingBot ? { firstName: existingBot.username, username: existingBot.username } : undefined);
+  const [launchUrl, setLaunchUrl] = useState<string | undefined>(existingBot?.miniAppUrl);
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string>();
 
   useEffect(() => { const overflow = document.body.style.overflow; const close = (event: KeyboardEvent) => { if (event.key === "Escape" && !pending) onClose(); }; document.body.style.overflow = "hidden"; addEventListener("keydown", close); return () => { document.body.style.overflow = overflow; removeEventListener("keydown", close); }; }, [onClose, pending]);
   useEffect(() => { let channel: BroadcastChannel | undefined; try { channel = new BroadcastChannel("tma-studio-payment"); channel.onmessage = (event) => { if ((event.data as { type?: string })?.type === "payment-return") void checkPayment(); }; } catch { /* Manual payment check remains available. */ } return () => channel?.close(); }, []);
@@ -21,25 +22,36 @@ export function LaunchModal({ projectId, initialPlan = "solo", onClose, onLaunch
     setPending(true); setError(undefined);
     try {
       const [found, entitlement] = await Promise.all([validateBot(projectId, token), getEntitlement()]);
-      setBot(found); setStep(entitlement.canPublish ? 3 : 2);
+      setBot(found); if (entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(entitlement.canPublish ? 3 : 2);
     } catch (reason) { setError(messageFrom(reason, "Не удалось проверить бота")); }
     finally { setPending(false); }
   }
 
   async function pay() {
+    // Open synchronously while the click still has transient user activation.
+    // On slow mobile networks a popup opened only after the API response can be blocked.
+    const paymentWindow = window.open("about:blank", "tma-payment");
+    if (paymentWindow) paymentWindow.opener = null;
     setPending(true); setError(undefined);
     try {
       const checkout = await createCheckout(plan);
-      if (checkout.confirmationUrl) { window.open(checkout.confirmationUrl, "tma-payment", "noopener,noreferrer"); setStep(5); return; }
+      if (checkout.confirmationUrl) {
+        setCheckoutUrl(checkout.confirmationUrl);
+        if (paymentWindow) paymentWindow.location.replace(checkout.confirmationUrl);
+        else setError("Браузер заблокировал новую вкладку. Откройте страницу оплаты кнопкой ниже.");
+        setStep(5);
+        return;
+      }
+      paymentWindow?.close();
       if (checkout.status === "succeeded") { setStep(3); return; }
       setError("Платёж создан. После подтверждения оплаты вернитесь в этот мастер запуска.");
-    } catch (reason) { setError(messageFrom(reason, "Не удалось создать платёж")); }
+    } catch (reason) { paymentWindow?.close(); setError(messageFrom(reason, "Не удалось создать платёж")); }
     finally { setPending(false); }
   }
 
   async function checkPayment() {
     setPending(true); setError(undefined);
-    try { const entitlement = await getEntitlement(); if (entitlement.canPublish) setStep(3); else setError("Платёж ещё не подтверждён. Подождите несколько секунд и проверьте снова."); }
+    try { const entitlement = await getEntitlement(); if (entitlement.canPublish) { if (entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(3); } else setError("Платёж ещё не подтверждён. Подождите несколько секунд и проверьте снова."); }
     catch (reason) { setError(messageFrom(reason, "Не удалось проверить оплату")); }
     finally { setPending(false); }
   }
@@ -50,13 +62,15 @@ export function LaunchModal({ projectId, initialPlan = "solo", onClose, onLaunch
     setPending(true); setError(undefined);
     try {
       await publishProject(projectId);
+      if (existingBot) { const result = { plan, botUsername: existingBot.username, miniAppUrl: existingBot.miniAppUrl ?? "" }; setLaunchUrl(existingBot.miniAppUrl); onLaunched(result); setStep(4); return; }
       const connected = await activateBot(projectId, token);
-      setToken(""); setLaunchUrl(connected.miniAppUrl); setStep(4);
+      const result = { plan, botUsername: connected.botUsername ?? bot?.username, miniAppUrl: connected.miniAppUrl };
+      setToken(""); setLaunchUrl(connected.miniAppUrl); onLaunched(result); setStep(4);
     } catch (reason) { setError(messageFrom(reason, "Не удалось запустить приложение")); }
     finally { setPending(false); }
   }
 
-  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}><div className="launch-modal" role="dialog" aria-modal="true" aria-label="Мастер запуска">
+  return <div className="modal-backdrop launch-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}><div className="launch-modal" role="dialog" aria-modal="true" aria-label="Мастер запуска">
     <button className="modal-close" onClick={onClose} aria-label="Закрыть"><X /></button>
     <div className="launch-progress"><span className={step >= 1 ? "active" : ""}>1</span><i className={step >= 2 ? "active" : ""} /><span className={step >= 2 ? "active" : ""}>2</span><i className={step >= 3 ? "active" : ""} /><span className={step >= 3 ? "active" : ""}>3</span></div>
 
@@ -65,36 +79,37 @@ export function LaunchModal({ projectId, initialPlan = "solo", onClose, onLaunch
       <p>Создайте бота у @BotFather и вставьте полученный токен. Мы проверим его, а после оплаты безопасно сохраним и настроим Mini App.</p>
       <ol><li><span>1</span>Откройте <b>@BotFather</b> в Telegram <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" aria-label="Открыть BotFather"><ExternalLink /></a></li><li><span>2</span>Отправьте команду <b>/newbot</b><button onClick={() => void copyCommand()} aria-label="Скопировать команду /newbot"><Copy /></button></li><li><span>3</span>Скопируйте API-токен</li></ol>
       {copied && <div className="inline-success">Команда /newbot скопирована</div>}
-      <label className="token-field"><span>Bot Token</span><input type="password" autoComplete="off" value={token} onChange={(event) => setToken(event.target.value.trim())} placeholder="1234567890:AAH..." /><small><Lock />Токен будет зашифрован перед сохранением</small></label>
+      <label className="token-field"><span>Bot Token</span><input name="bot-token" type="password" autoComplete="off" value={token} onChange={(event) => setToken(event.target.value.trim())} placeholder="1234567890:AAH..." /><small><Lock />Токен будет зашифрован перед сохранением</small></label>
       {error && <div className="auth-error">{error}</div>}
       <button className="primary-button modal-action" disabled={token.length < 20 || pending} onClick={() => void checkBot()}>{pending ? "Проверяем…" : "Проверить и продолжить"} <ChevronRight /></button>
     </>}
 
     {step === 2 && <>
-      <div className="modal-icon green"><Check /></div><h2>Бот найден</h2><BotCard bot={bot} />
+      <div className="modal-icon green"><Check /></div><h2>{existingBot ? "Бот уже подключён" : "Бот найден"}</h2><BotCard bot={bot} />
       <h3 className="choose-title">Выберите тариф</h3>
       <PlanOption code="solo" current={plan} onSelect={setPlan} title="Один бот" subtitle="Для одного проекта" price="350 ₽" />
       <PlanOption code="trio" current={plan} onSelect={setPlan} title="Три бота" subtitle="Для нескольких проектов" price="650 ₽" badge="Выгодно" />
       {error && <div className="auth-error">{error}</div>}
       <button className="primary-button modal-action" disabled={pending} onClick={() => void pay()}>{pending ? "Создаём платёж…" : "Перейти к оплате"} <ChevronRight /></button>
-      <button className="back-link" onClick={() => setStep(1)}>Назад</button>
+      {!existingBot && <button className="back-link" onClick={() => setStep(1)}>Назад</button>}
     </>}
 
     {step === 3 && <>
-      <div className="modal-icon purple"><Rocket /></div><h2>Всё готово к запуску</h2><BotCard bot={bot} />
-      <p>Опубликуем текущую версию, зашифруем токен, установим кнопку меню и защищённый webhook. Обычно это занимает несколько секунд.</p>
+      <div className="modal-icon info"><Rocket /></div><h2>Всё готово к запуску</h2><BotCard bot={bot} />
+      <p>{existingBot ? "Опубликуем текущую версию Mini App. Подключённый бот и его защищённые настройки останутся прежними." : "Опубликуем текущую версию, зашифруем токен, установим кнопку меню и защищённый webhook. Обычно это занимает несколько секунд."}</p>
       {error && <div className="auth-error">{error}</div>}
-      <button className="primary-button modal-action" disabled={pending} onClick={() => void launch()}>{pending ? "Настраиваем Telegram…" : "Опубликовать и запустить"} <Rocket /></button>
-      <button className="back-link" onClick={() => setStep(1)}>Проверить другой токен</button>
+      <button className="primary-button modal-action" disabled={pending} onClick={() => void launch()}>{pending ? existingBot ? "Публикуем…" : "Настраиваем Telegram…" : existingBot ? "Опубликовать новую версию" : "Опубликовать и запустить"} <Rocket /></button>
+      <button className="back-link" onClick={() => setStep(existingBot ? 2 : 1)}>{existingBot ? "Назад к тарифу" : "Проверить другой токен"}</button>
     </>}
 
     {step === 4 && <>
       <div className="modal-icon green"><Check /></div><h2>Mini App запущен</h2>
       <p>Кнопка меню и webhook настроены. Пользователи уже могут открыть приложение внутри Telegram.</p>
-      {launchUrl && <a className="primary-button modal-action" href={launchUrl} target="_blank" rel="noreferrer">Открыть Mini App <ChevronRight /></a>}
-      <button className="back-link" onClick={() => onLaunched({ plan, botUsername: bot?.username, miniAppUrl: launchUrl ?? "" })}>Перейти в кабинет</button>
+      {bot?.username && <a className="primary-button modal-action" href={`https://t.me/${bot.username}`} target="_blank" rel="noreferrer">Открыть @{bot.username} в Telegram <ChevronRight /></a>}
+      {launchUrl && <a className="outline-button modal-action" href={launchUrl} target="_blank" rel="noreferrer">Проверить Mini App в браузере</a>}
+      <button className="back-link" onClick={onClose}>Перейти в кабинет</button>
     </>}
-    {step === 5 && <><div className="modal-icon purple"><Lock /></div><h2>Завершите оплату</h2><p>Страница оплаты открылась в новой вкладке. После подтверждения вернитесь сюда — токен останется только в этой защищённой сессии.</p>{error && <div className="auth-error">{error}</div>}<button className="primary-button modal-action" disabled={pending} onClick={() => void checkPayment()}>{pending ? "Проверяем…" : "Я оплатил — проверить"}<ChevronRight /></button><button className="back-link" onClick={() => setStep(2)}>Выбрать другой тариф</button></>}
+    {step === 5 && <><div className="modal-icon info"><Lock /></div><h2>Завершите оплату</h2><p>Страница оплаты открывается в новой вкладке. После подтверждения вернитесь сюда — токен останется только в этой защищённой сессии.</p>{error && <div className="auth-error">{error}</div>}{checkoutUrl && <a className="outline-button modal-action" href={checkoutUrl} target="_blank" rel="noreferrer">Открыть страницу оплаты <ExternalLink /></a>}<button className="primary-button modal-action" disabled={pending} onClick={() => void checkPayment()}>{pending ? "Проверяем…" : "Я оплатил — проверить"}<ChevronRight /></button><button className="back-link" onClick={() => setStep(2)}>Выбрать другой тариф</button></>}
   </div></div>;
 }
 

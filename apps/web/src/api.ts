@@ -1,10 +1,10 @@
-import type { BuilderBlock, Lead, ProjectState } from "./types";
+import type { BotConnectionStatus, BuilderBlock, Lead, ProjectState } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 const SESSION_KEY = "tma-studio-session";
 interface Session { accessToken: string; refreshToken: string; user: { id: string; displayName: string; email: string } }
-interface RemoteProject { id: string; name: string; status: ProjectState["status"]; updatedAt?: string }
-interface RemotePage { id: string; title: string; slug: string; revision: number; document: { blocks: BuilderBlock[] } }
+interface RemoteProject { id: string; name: string; status: ProjectState["status"]; publishedReleaseId?: string | null; updatedAt?: string }
+interface RemotePage { id: string; title: string; slug: string; revision: number; updatedAt?: string; document: { blocks: BuilderBlock[] } }
 
 export async function registerAccount(input: { displayName: string; email: string; password: string }): Promise<Session> { const response = await request<{ data: Session }>("/v1/auth/register", { method: "POST", body: JSON.stringify(input) }, false); setSession(response.data); return response.data; }
 export async function loginAccount(input: { email: string; password: string }): Promise<Session> { const response = await request<{ data: Session }>("/v1/auth/login", { method: "POST", body: JSON.stringify(input) }, false); setSession(response.data); return response.data; }
@@ -25,18 +25,31 @@ export async function createRemoteProject(local: ProjectState): Promise<ProjectS
   const entry = pages[0]!;
   const first = local.pages[0];
   if (first === undefined) return { ...local, id: project.id, name: project.name, pages: [{ id: entry.id, title: entry.title, slug: entry.slug, blocks: [], remoteRevision: entry.revision }], activePageId: entry.id };
-  const updated = await updateRemotePage(project.id, { ...first, id: entry.id, remoteRevision: entry.revision });
-  return { ...local, id: project.id, name: project.name, pages: [{ ...first, id: updated.id, remoteRevision: updated.revision }], activePageId: updated.id, updatedAt: new Date().toISOString() };
+  const entryIdMap = new Map([[first.id, entry.id]]);
+  const seededPages = local.pages.map((page, index) => ({
+    ...page,
+    ...(index === 0 ? { id: entry.id, remoteRevision: entry.revision } : {}),
+    blocks: remapActions(page.blocks, entryIdMap),
+  }));
+  return saveRemoteProject({
+    ...local,
+    id: project.id,
+    name: project.name,
+    pages: seededPages,
+    activePageId: local.activePageId === first.id ? entry.id : local.activePageId,
+  });
 }
 
 export async function loadRemoteProject(projectId: string, plan: ProjectState["plan"] = "free"): Promise<ProjectState> {
   const [project, pages, bot, entitlement] = await Promise.all([
     request<{ data: RemoteProject }>(`/v1/projects/${projectId}`),
     request<{ data: RemotePage[] }>(`/v1/projects/${projectId}/pages`),
-    request<{ data: { botUsername?: string; miniAppUrl?: string; status: string } | null }>(`/v1/bot-connections/${projectId}`).catch(() => ({ data: null })),
+    request<{ data: { botUsername?: string; miniAppUrl?: string; status: BotConnectionStatus } | null }>(`/v1/bot-connections/${projectId}`).catch(() => ({ data: null })),
     getEntitlement().catch(() => ({ planCode: plan, maxProjects: 1, maxActiveBots: 0, canPublish: false })),
   ]);
-  return { id: project.data.id, name: project.data.name, status: project.data.status, plan: entitlement.planCode, updatedAt: project.data.updatedAt, botUsername: bot.data?.botUsername, miniAppUrl: bot.data?.miniAppUrl, activePageId: pages.data[0]?.id, pages: pages.data.map((page) => ({ id: page.id, title: page.title, slug: page.slug, blocks: page.document.blocks, remoteRevision: page.revision })) };
+  const publishedAt = project.data.updatedAt === undefined ? 0 : Date.parse(project.data.updatedAt);
+  const hasPendingChanges = project.data.publishedReleaseId != null && pages.data.some((page) => page.updatedAt !== undefined && Date.parse(page.updatedAt) > publishedAt);
+  return { id: project.data.id, name: project.data.name, status: project.data.status, plan: entitlement.planCode, updatedAt: project.data.updatedAt, hasPendingChanges, botUsername: bot.data?.botUsername, miniAppUrl: bot.data?.miniAppUrl, botStatus: bot.data?.status, activePageId: pages.data[0]?.id, pages: pages.data.map((page) => ({ id: page.id, title: page.title, slug: page.slug, blocks: page.document.blocks, remoteRevision: page.revision })) };
 }
 
 export async function listRemoteProjects(): Promise<RemoteProject[]> { return (await request<{ data: RemoteProject[] }>("/v1/projects")).data; }
@@ -61,7 +74,7 @@ export async function saveRemoteProject(project: ProjectState): Promise<ProjectS
   const normalized = stagedPages.map((page) => ({ ...page, blocks: remapActions(page.blocks, idMap) }));
   const savedPages = [] as ProjectState["pages"];
   for (const page of normalized) { const updated = await updateRemotePage(project.id, page); savedPages.push({ ...page, remoteRevision: updated.revision }); }
-  return { ...project, pages: savedPages, activePageId: idMap.get(project.activePageId ?? "") ?? savedPages[0]?.id, updatedAt: new Date().toISOString() };
+  return { ...project, pages: savedPages, activePageId: idMap.get(project.activePageId ?? "") ?? savedPages[0]?.id, updatedAt: new Date().toISOString(), hasPendingChanges: project.status === "active" ? true : project.hasPendingChanges };
 }
 export const saveRemotePage = saveRemoteProject;
 export async function deleteRemotePage(projectId: string, pageId: string): Promise<void> { await request(`/v1/projects/${projectId}/pages/${pageId}`, { method: "DELETE" }); }

@@ -169,7 +169,13 @@ export class PostgresCoreRepository implements CoreRepository {
         await transaction`UPDATE pages SET published_version_id = ${pageVersionId} WHERE id = ${page.id}`;
         publishedPages.push({ id: page.id, slug: page.slug, title: page.title, document: page.document });
       }
-      await transaction`UPDATE projects SET published_release_id = ${release.id}, status = 'active' WHERE id = ${project.id}`;
+      // `updated_at` is the publication boundary used by the dashboard to
+      // distinguish the live release from drafts edited afterwards.
+      await transaction`
+        UPDATE projects
+        SET published_release_id = ${release.id}, status = 'active', updated_at = now()
+        WHERE id = ${project.id}
+      `;
       return {
         project: { publicId: project.public_id, name: project.name, entryPageId: project.entry_page_id },
         release: { id: release.id, version: release.version, contentHash, publishedAt: release.created_at.toISOString() },

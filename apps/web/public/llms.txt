@@ -1,0 +1,11 @@
+# TMA Studio
+
+TMA Studio is a no-code constructor and hosting platform for Telegram Mini Apps.
+
+Users can build a draft for free, connect their Telegram bot, preview the customer journey, and pay only when publishing.
+
+## Public pages
+
+- [Product overview, features, templates, pricing, and FAQ](/)
+- [Privacy policy](/privacy)
+- [Terms of service](/terms)

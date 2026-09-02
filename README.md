@@ -16,7 +16,8 @@ Self-service SaaS-конструктор Telegram Mini Apps: лендинг, л�
 - проверка bot token через `getMe`, AES-256-GCM envelope encryption;
 - автоматические `setChatMenuButton` и `setWebhook`, секрет webhook, дедупликация updates и worker `/start`;
 - тарифные лимиты на сервере, YooKassa checkout и проверка webhook повторным запросом к API провайдера;
-- responsive лендинг, кабинет, редактор и трёхшаговый мастер запуска.
+- самостоятельная красная дизайн-система, responsive лендинг, кабинет, редактор и трёхшаговый мастер запуска;
+- повторная публикация использует уже подключённого бота и не запрашивает его токен заново;
 - рабочие разделы бота, настроек, помощи и inbox заявок с экспортом CSV;
 - публичное приложение и приём форм автоматически закрываются после окончания оплаченного периода.
 
@@ -49,7 +50,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-Проверки включают backend, шаблоны конструктора, media-схему и preview manifest. Production-сборка панели — около `84 kB gzip`, TMA Core — около `4.2 kB gzip` JavaScript.
+Проверки включают backend, шаблоны конструктора, media-схему и preview manifest. Production-сборка панели — около `88 kB gzip`, TMA Core — около `4.2 kB gzip` JavaScript.
 
 ## Production-конфигурация
 
