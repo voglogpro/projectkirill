@@ -9,9 +9,10 @@ await runMigrations(databaseUrl);
 
 const app = await buildApp();
 const webRoot = resolve("apps/web/dist");
+const webAssetsRoot = resolve(webRoot, "assets");
 const miniAppRoot = resolve("apps/miniapp/dist");
 
-app.get("/assets/*", async (request, reply) => sendAsset(reply, webRoot, request.params["*"]));
+app.get("/assets/*", async (request, reply) => sendAsset(reply, webAssetsRoot, request.params["*"]));
 app.get("/miniapp-assets/*", async (request, reply) => sendAsset(reply, miniAppRoot, request.params["*"]));
 app.get("/app", async (_request, reply) => sendIndex(reply, miniAppRoot));
 app.get("/app/*", async (_request, reply) => sendIndex(reply, miniAppRoot));
