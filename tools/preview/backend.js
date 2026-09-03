@@ -21,7 +21,7 @@ export function createBackend(notify) {
     return {
       users: [{ id: userId, displayName: "Кирилл", email: "demo@tmastudio.ru", password: "DemoPass123!" }],
       tokens: { "preview-access-token": userId },
-      projects: [], pages: [], releases: [], bots: [], submissions: [],
+      projects: [], pages: [], releases: [], bots: [], submissions: [], flows: {},
       entitlements: {}, checkouts: [],
     };
   }
@@ -150,7 +150,7 @@ export function createBackend(notify) {
       return ok(publicProject(project), 201);
     }
 
-    const projectMatch = path.match(/^\/v1\/projects\/([^/]+)(?:\/(pages|publish|submissions|preview-grants))?(?:\/([^/]+))?$/);
+    const projectMatch = path.match(/^\/v1\/projects\/([^/]+)(?:\/(pages|publish|submissions|preview-grants|flow))?(?:\/([^/]+))?$/);
     if (projectMatch) {
       const [, projectId, section, pageId] = projectMatch;
       const project = projectFor(user, projectId);
@@ -179,6 +179,24 @@ export function createBackend(notify) {
         if (pages().length <= 1) return fail(409, "LAST_PAGE", "В проекте должна остаться хотя бы одна страница");
         state.pages = state.pages.filter((item) => item.id !== pageId); changed();
         return { status: 204, body: undefined };
+      }
+      if (section === "flow" && pageId === undefined && method === "GET") {
+        state.flows[project.id] ??= { document: seedFlow(), revision: 1, versions: [] };
+        changed();
+        return ok(flowBody(project.id));
+      }
+      if (section === "flow" && pageId === undefined && method === "PUT") {
+        const flow = (state.flows[project.id] ??= { document: seedFlow(), revision: 1, versions: [] });
+        if (payload.expectedRevision !== flow.revision) return fail(409, "REVISION_CONFLICT", "Сценарий изменён в другой вкладке — обновите страницу");
+        flow.document = payload.document; flow.revision += 1; changed();
+        return ok(flowBody(project.id));
+      }
+      if (section === "flow" && pageId === "publish" && method === "POST") {
+        const flow = state.flows[project.id];
+        if (flow === undefined) return fail(404, "NOT_FOUND", "Сценарий не найден");
+        flow.versions.push(JSON.parse(JSON.stringify(flow.document)));
+        changed();
+        return ok({ versionId: uuid(), version: flow.versions.length });
       }
       if (section === "preview-grants" && method === "POST") return ok({ token: `preview-${uuid()}`, expiresAt: new Date(Date.now() + 3600_000).toISOString() });
       if (section === "submissions" && method === "GET") return ok(state.submissions.filter((item) => item.projectId === project.id).slice(-500).reverse().map((item) => ({ id: item.id, formKey: item.formKey, pageTitle: item.pageTitle, telegramUserId: item.telegramUserId, values: item.values, createdAt: item.createdAt })));
@@ -216,6 +234,24 @@ export function createBackend(notify) {
     }
 
     return fail(404, "NOT_FOUND", "Route not found");
+  }
+
+  function flowBody(projectId) {
+    const flow = state.flows[projectId];
+    return { document: flow.document, revision: flow.revision, ...(flow.versions.length === 0 ? {} : { publishedVersion: flow.versions.length }), updatedAt: now() };
+  }
+  /** Smallest valid scenario, mirroring createEmptyBotFlow on the server. */
+  function seedFlow() {
+    const start = uuid(), hello = uuid();
+    return {
+      schemaVersion: 1,
+      metadata: { name: "Мой бот" },
+      nodes: [
+        { id: start, version: 1, position: { x: 0, y: 0 }, type: "start", props: { command: "start", description: "Первое сообщение" } },
+        { id: hello, version: 1, position: { x: 0, y: 140 }, type: "message", props: { text: "Здравствуйте! Чем помочь?", buttons: [] } },
+      ],
+      edges: [{ id: "start-hello", from: start, fromHandle: "next", to: hello }],
+    };
   }
 
   function issue(user) {

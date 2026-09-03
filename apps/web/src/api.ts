@@ -79,6 +79,18 @@ export async function saveRemoteProject(project: ProjectState): Promise<ProjectS
 export const saveRemotePage = saveRemoteProject;
 export async function deleteRemotePage(projectId: string, pageId: string): Promise<void> { await request(`/v1/projects/${projectId}/pages/${pageId}`, { method: "DELETE" }); }
 
+interface RemoteFlow { document: unknown; revision: number; publishedVersion?: number; updatedAt?: string }
+
+export async function loadRemoteFlow(projectId: string): Promise<RemoteFlow> {
+  return (await request<{ data: RemoteFlow }>(`/v1/projects/${projectId}/flow`)).data;
+}
+export async function saveRemoteFlow(projectId: string, document: unknown, expectedRevision: number): Promise<RemoteFlow> {
+  return (await request<{ data: RemoteFlow }>(`/v1/projects/${projectId}/flow`, { method: "PUT", body: JSON.stringify({ expectedRevision, document }) })).data;
+}
+export async function publishRemoteFlow(projectId: string): Promise<{ version: number }> {
+  return (await request<{ data: { version: number } }>(`/v1/projects/${projectId}/flow/publish`, { method: "POST" })).data;
+}
+
 export async function createPreview(projectId: string): Promise<string> {
   const grant = (await request<{ data: { token: string } }>(`/v1/projects/${projectId}/preview-grants`, { method: "POST", body: JSON.stringify({ ttlSeconds: 3600 }) })).data;
   return `${location.origin}/app/preview?preview=${encodeURIComponent(grant.token)}`;

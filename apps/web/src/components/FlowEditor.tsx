@@ -1,8 +1,9 @@
 import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ArrowLeft, Clock, GitBranch, MessageSquareText, Play, Plus, Rocket, Trash2, UserRound } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
+import { hasSession, loadRemoteFlow, publishRemoteFlow, saveRemoteFlow } from "../api";
 import { createFlowNode, exitsOf, nodeCatalog, saveFlow, type FlowNodeType } from "../flow-store";
 import { FlowSimulator } from "./FlowSimulator";
 
@@ -13,12 +14,56 @@ const icons: Record<FlowNodeType, typeof MessageSquareText> = {
   start: Play, message: MessageSquareText, question: MessageSquareText, choice: GitBranch, delay: Clock, handoff: UserRound,
 };
 
-export function FlowEditor({ flow, onChange, onBack, onLaunch }: { flow: BotFlowDocument; onChange: (flow: BotFlowDocument) => void; onBack: () => void; onLaunch: () => void }) {
+export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMessage }: { flow: BotFlowDocument; projectId: string; onChange: (flow: BotFlowDocument) => void; onBack: () => void; onLaunch: () => void; onMessage: (message: string) => void }) {
   const [selectedId, setSelectedId] = useState<string | undefined>(flow.nodes[1]?.id ?? flow.nodes[0]?.id);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [revision, setRevision] = useState<number>();
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
+  const skipNextSave = useRef(true);
   const selected = flow.nodes.find((node) => node.id === selectedId);
 
   const commit = useCallback((next: BotFlowDocument) => { saveFlow(next); onChange(next); }, [onChange]);
+
+  // The server owns the scenario; local storage is the offline copy and what
+  // the preview stand reads.
+  useEffect(() => {
+    if (!hasSession()) { skipNextSave.current = false; return; }
+    let active = true;
+    void loadRemoteFlow(projectId)
+      .then((remote) => {
+        if (!active) return;
+        const document = remote.document as BotFlowDocument | undefined;
+        if (!Array.isArray(document?.nodes)) { onMessage("Сервер вернул сценарий в неизвестном формате — работаем с локальной копией"); return; }
+        setRevision(remote.revision);
+        skipNextSave.current = true;
+        saveFlow(document);
+        onChange(document);
+        // The previous selection belonged to the local copy and may not exist here.
+        setSelectedId(document.nodes[1]?.id ?? document.nodes[0]?.id);
+      })
+      .catch((reason: unknown) => { if (active) onMessage(reason instanceof Error ? reason.message : "Не удалось загрузить сценарий"); });
+    return () => { active = false; };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (skipNextSave.current) { skipNextSave.current = false; return; }
+    if (!hasSession() || revision === undefined) return;
+    setSaveState("saving");
+    const timer = setTimeout(() => {
+      void saveRemoteFlow(projectId, flow, revision)
+        .then((saved) => { setRevision(saved.revision); setSaveState("saved"); })
+        .catch((reason: unknown) => { setSaveState("error"); onMessage(reason instanceof Error ? reason.message : "Не удалось сохранить сценарий"); });
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [flow, projectId, revision]);
+
+  async function launch() {
+    if (hasSession()) {
+      try { await publishRemoteFlow(projectId); }
+      catch (reason) { onMessage(reason instanceof Error ? reason.message : "Не удалось опубликовать сценарий"); return; }
+    }
+    onLaunch();
+  }
   const updateNode = useCallback((next: FlowNode) => commit({ ...flow, nodes: flow.nodes.map((node) => node.id === next.id ? next : node) }), [flow, commit]);
 
   // React Flow owns the canvas nodes because it writes measured sizes onto them
@@ -83,12 +128,12 @@ export function FlowEditor({ flow, onChange, onBack, onLaunch }: { flow: BotFlow
     <header className="builder-top">
       <div>
         <button className="icon-button" onClick={onBack} aria-label="Вернуться в кабинет"><ArrowLeft /></button>
-        <span className="flow-title"><b>{flow.metadata.name}</b><small>сценарий бота · {flow.nodes.length} шагов</small></span>
+        <span className="flow-title"><b>{flow.metadata.name}</b><small className={saveState === "error" ? "error" : ""}>{saveState === "saving" ? "Сохраняем в облаке…" : saveState === "error" ? "Ошибка сохранения" : hasSession() ? "Сохранено в облаке" : "Сохранено на этом устройстве"} · {flow.nodes.length} шагов</small></span>
       </div>
       <div />
       <div>
         <button className="outline-button" onClick={() => setSimulatorOpen(true)}><Play />Проверить в чате</button>
-        <button className="primary-button" onClick={onLaunch}><Rocket />Запустить</button>
+        <button className="primary-button" disabled={saveState === "saving"} onClick={() => void launch()}><Rocket />Запустить</button>
       </div>
     </header>
 

@@ -183,3 +183,22 @@ function assertUniqueIds(items: ReadonlyArray<{ id: string }>, path: string, con
 export function parseBotFlowDocument(value: unknown): BotFlowDocument {
   return botFlowDocumentSchema.parse(value);
 }
+
+/**
+ * Smallest scenario that already answers /start. The server seeds a project
+ * with this so the editor never opens on an invalid document; the console
+ * replaces it with its own richer starter on the first save.
+ */
+export function createEmptyBotFlow(name: string): BotFlowDocument {
+  const start = crypto.randomUUID();
+  const hello = crypto.randomUUID();
+  return botFlowDocumentSchema.parse({
+    schemaVersion: 1,
+    metadata: { name },
+    nodes: [
+      { id: start, version: 1, position: { x: 0, y: 0 }, type: "start", props: { command: "start", description: "Первое сообщение" } },
+      { id: hello, version: 1, position: { x: 0, y: 140 }, type: "message", props: { text: "Здравствуйте! Чем помочь?", buttons: [] } },
+    ],
+    edges: [{ id: "start-hello", from: start, fromHandle: "next", to: hello }],
+  });
+}

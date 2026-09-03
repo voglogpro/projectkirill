@@ -24,6 +24,8 @@ import { PostgresTelegramUpdateRepository } from "./db/postgres-telegram-update-
 import { PostgresTelegramUpdateJobRepository } from "./db/postgres-telegram-update-job-repository.js";
 import { registerAuthRoutes } from "./http/auth-routes.js";
 import { registerBillingRoutes } from "./http/billing-routes.js";
+import { PostgresBotFlowRepository } from "./db/postgres-bot-flow-repository.js";
+import { registerBotFlowRoutes } from "./http/bot-flow-routes.js";
 import { registerBotRoutes } from "./http/bot-routes.js";
 import { registerCoreRoutes } from "./http/core-routes.js";
 import { registerFormRoutes } from "./http/form-routes.js";
@@ -93,17 +95,19 @@ export async function buildApp() {
     ? new YooKassaPaymentProvider({ shopId: config.YOOKASSA_SHOP_ID!, secretKey: config.YOOKASSA_SECRET_KEY! })
     : new MockPaymentProvider();
   const billingService = new BillingService(new PostgresBillingRepository(sql), paymentProvider, config.PUBLIC_CONSOLE_ORIGIN);
+  const botFlows = new PostgresBotFlowRepository(sql);
   const formService = new FormSubmissionService(new PostgresFormSubmissionRepository(sql), coreService, vault);
 
   await registerAuthRoutes(app, authService);
   await registerCoreRoutes(app, coreService, accessTokens);
   await registerBillingRoutes(app, billingService, accessTokens);
   await registerBotRoutes(app, connectBotService, accessTokens);
+  await registerBotFlowRoutes(app, botFlows, accessTokens);
   await registerFormRoutes(app, formService, accessTokens);
   await registerTelegramWebhookRoutes(app, new TelegramWebhookService(new PostgresTelegramUpdateRepository(sql)));
 
   if (config.RUN_TELEGRAM_WORKER) {
-    const updateWorker = new TelegramUpdateWorker(new PostgresTelegramUpdateJobRepository(sql), vault, telegram);
+    const updateWorker = new TelegramUpdateWorker(new PostgresTelegramUpdateJobRepository(sql), vault, telegram, { flows: botFlows, dialogs: botFlows });
     let stopped = false;
     let workerLoop: Promise<void> | undefined;
     app.addHook("onReady", async () => {
