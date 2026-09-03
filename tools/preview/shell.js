@@ -121,35 +121,71 @@ function softenHistory(win) {
 /* ------------------------------------------------------------------- telegram */
 
 function botName() { return snapshot.bot?.username ? `@${snapshot.bot.username}` : "Бот не подключён"; }
-function say(from, text, button) { chat.push({ from, text, button, at: new Date() }); renderChat(); }
+function say(from, text, buttons) { chat.push({ from, text, buttons, at: new Date() }); renderChat(); }
+
+/** The console saves the scenario here; the chat runs that exact document. */
+function currentFlow() {
+  try { const raw = localStorage.getItem("tma-studio-flow-v1"); return raw === null ? undefined : JSON.parse(raw); }
+  catch { return undefined; }
+}
+
+let dialog = initialDialogState();
 
 function send(text) {
   const value = text.trim();
   if (value === "") return;
   say("user", value);
+  const isCommand = /^\/[A-Za-z0-9_]+(?:@[A-Za-z0-9_]+)?(?:\s|$)/.test(value);
+  deliver(isCommand ? { kind: "command", command: value } : { kind: "text", text: value });
+}
+
+function deliver(event) {
   const bot = snapshot.bot;
-  if (bot === undefined) { say("system", "Бот ещё не подключён. Пройдите мастер запуска в конструкторе — токен от @BotFather, тариф, публикация."); return; }
-  if (/^\/start(?:@[A-Za-z0-9_]+)?(?:\s|$)/.test(value)) {
-    setTimeout(() => say("bot", "Приложение готово. Нажмите кнопку, чтобы открыть его.", bot.menuButtonText ?? "Открыть приложение"), 350);
+  if (bot === undefined) { say("system", "Бот ещё не подключён. Пройдите мастер запуска в конструкторе."); return; }
+  const flow = currentFlow();
+  if (flow === undefined) {
+    setTimeout(() => say("bot", "Приложение готово. Нажмите кнопку, чтобы открыть его.", [{ id: "app", kind: "miniapp", label: bot.menuButtonText ?? "Открыть приложение" }]), 350);
     return;
   }
-  setTimeout(() => say("system", "В этом MVP worker обрабатывает только /start — остальные апдейты помечаются обработанными без ответа."), 350);
+  const step = runFlow(flow, dialog, event);
+  dialog = step.state;
+  if (step.messages.length === 0) {
+    setTimeout(() => say("system", step.handled
+      ? "Сценарий дошёл до конца этой ветки."
+      : event.kind === "command" ? "Такой команды в сценарии нет." : "Бот сейчас ничего не ждёт — добавьте шаг «Вопрос»."), 350);
+    return;
+  }
+  let wait = 350;
+  for (const message of step.messages) {
+    wait += Math.min(message.delaySeconds ?? 0, 3) * 1000;
+    setTimeout(() => say("bot", message.text, message.buttons), wait);
+  }
+}
+
+function press(button) {
+  if (button.kind === "url") { openExternal(button.url ?? ""); return; }
+  if (button.kind === "miniapp") { view.phone = "mini"; view.source = "published"; render(); return; }
+  say("user", button.label);
+  deliver({ kind: "press", handle: button.id });
 }
 
 function renderChat() {
   const list = el("chat-log");
+  const active = chat.filter((message) => message.buttons && message.buttons.length > 0).at(-1);
   list.replaceChildren(...chat.map((message) => {
     const row = document.createElement("div");
     row.className = `msg ${message.from}`;
     const bubble = document.createElement("div");
     bubble.className = "bubble";
     bubble.textContent = message.text;
-    if (message.button) {
-      const action = document.createElement("button");
-      action.className = "webapp-button";
-      action.textContent = message.button;
-      action.onclick = () => { view.phone = "mini"; view.source = "published"; render(); };
-      bubble.append(action);
+    if (message === active) {
+      for (const button of message.buttons) {
+        const action = document.createElement("button");
+        action.className = "webapp-button";
+        action.textContent = button.kind === "url" ? `${button.label} \u2197` : button.label;
+        action.onclick = () => press(button);
+        bubble.append(action);
+      }
     }
     if (message.from !== "system") {
       const time = document.createElement("i");
@@ -165,6 +201,7 @@ function renderChat() {
 /* ---------------------------------------------------------------------- shell */
 
 function openExternal(url) {
+  if (url === "" || url === "about:blank") return; // the payment window the console opens before it has a URL
   if (url.includes("t.me/") || url.startsWith("tg://")) { view.phone = "telegram"; render(); say("system", `Ссылка открыла Telegram: ${url}`); return; }
   say("system", `Внешняя ссылка: ${url}`);
   view.phone = "telegram"; render();
@@ -210,7 +247,7 @@ for (const button of document.querySelectorAll("[data-source]")) button.onclick 
 el("theme-toggle").onclick = () => { view.theme = view.theme === "light" ? "dark" : "light"; render(); };
 el("chat-form").onsubmit = (event) => { event.preventDefault(); const input = el("chat-input"); send(input.value); input.value = ""; };
 el("chat-menu").onclick = () => { view.phone = "mini"; view.source = "published"; render(); };
-el("start-button").onclick = () => send("/start");
+el("start-button").onclick = () => { dialog = initialDialogState(); send("/start"); };
 el("reset-button").onclick = () => { if (confirm("Сбросить демо-данные предпросмотра?")) backend.reset(); };
 el("reload-console").onclick = () => { mountConsole(); mountedSignature = undefined; };
 for (const button of document.querySelectorAll("[data-layout]")) {
@@ -221,6 +258,6 @@ for (const button of document.querySelectorAll("[data-layout]")) {
 }
 document.querySelector(`[data-layout="${innerWidth >= 1080 ? "split" : "console"}"]`).click();
 
-say("system", "Это имитация клиента Telegram: сообщения обрабатывает та же логика, что и worker в src/telegram/telegram-update-worker.ts.");
+say("system", "Это имитация клиента Telegram: сообщения исполняет тот же интерпретатор сценария, что и worker в src/telegram/telegram-update-worker.ts.");
 mountConsole();
 render();

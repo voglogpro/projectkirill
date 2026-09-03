@@ -27,6 +27,10 @@ const assets = {
 };
 
 const backend = (await readFile(resolve(here, "backend.js"), "utf8")).replace(/^export /m, "");
+// The compiled scenario interpreter has no runtime imports, so the stand can run
+// the production file itself rather than a copy that could drift from it.
+const runtimePath = resolve(root, "dist/domain/bot-flow-runtime.js");
+const runtime = (await readFile(runtimePath, "utf8").catch(() => fail(`run "npm run build" first: ${runtimePath} is missing`))).replaceAll(/^export /gm, "");
 const shell = await readFile(resolve(here, "shell.js"), "utf8");
 const styles = await readFile(resolve(here, "styles.css"), "utf8");
 const markup = await readFile(resolve(here, "markup.html"), "utf8");
@@ -39,6 +43,7 @@ ${styles}</style>
 ${markup}
 <script id="preview-assets" type="application/json">${JSON.stringify(assets)}</script>
 <script type="module">
+${runtime}
 ${backend}
 ${shell}</script>
 `;

@@ -27,6 +27,8 @@ export interface TelegramApi {
   setChatMenuButton(token: string, text: string, url: string): Promise<void>;
   setWebhook(token: string, options: TelegramWebhookOptions): Promise<void>;
   sendMessage(token: string, options: TelegramSendMessageOptions): Promise<{ messageId: number }>;
+  /** Clears the spinner Telegram shows on a pressed inline button. */
+  answerCallbackQuery(token: string, callbackQueryId: string): Promise<void>;
 }
 
 export interface TelegramWebhookOptions {
@@ -36,10 +38,17 @@ export interface TelegramWebhookOptions {
   dropPendingUpdates?: boolean;
 }
 
+/** One button per row: scenario buttons are labels, not a keyboard layout. */
+export type TelegramInlineButton =
+  | { text: string; callbackData: string }
+  | { text: string; url: string }
+  | { text: string; webAppUrl: string };
+
 export interface TelegramSendMessageOptions {
   chatId: string;
   text: string;
   webAppButton?: { text: string; url: string };
+  buttons?: readonly TelegramInlineButton[];
 }
 
 export class TelegramBotApiClient implements TelegramApi {
@@ -88,18 +97,21 @@ export class TelegramBotApiClient implements TelegramApi {
     }
     if (options.webAppButton !== undefined) assertHttpsUrl(options.webAppButton.url, "Mini App URL");
 
+    const rows = [
+      ...(options.webAppButton === undefined ? [] : [[{ text: options.webAppButton.text, web_app: { url: options.webAppButton.url } }]]),
+      ...(options.buttons ?? []).map((button) => [toInlineButton(button)]),
+    ];
+
     const message = await this.call<{ message_id: number }>(token, "sendMessage", {
       chat_id: options.chatId,
       text: options.text,
-      ...(options.webAppButton === undefined
-        ? {}
-        : {
-            reply_markup: {
-              inline_keyboard: [[{ text: options.webAppButton.text, web_app: { url: options.webAppButton.url } }]],
-            },
-          }),
+      ...(rows.length === 0 ? {} : { reply_markup: { inline_keyboard: rows } }),
     });
     return { messageId: message.message_id };
+  }
+
+  public async answerCallbackQuery(token: string, callbackQueryId: string): Promise<void> {
+    await this.call(token, "answerCallbackQuery", { callback_query_id: callbackQueryId });
   }
 
   private async call<T>(token: string, method: string, body: unknown): Promise<T> {
@@ -162,4 +174,20 @@ function safeTelegramMessage(description: string | undefined): string {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function toInlineButton(button: TelegramInlineButton): Record<string, unknown> {
+  if (button.text.length === 0 || button.text.length > 64) {
+    throw new TypeError("Telegram button text must contain 1 to 64 characters");
+  }
+  if ("webAppUrl" in button) {
+    assertHttpsUrl(button.webAppUrl, "Mini App URL");
+    return { text: button.text, web_app: { url: button.webAppUrl } };
+  }
+  if ("url" in button) return { text: button.text, url: button.url };
+  // Telegram rejects callback data over 64 bytes, and silently for some clients.
+  if (Buffer.byteLength(button.callbackData, "utf8") > 64) {
+    throw new TypeError("Telegram callback data must not exceed 64 bytes");
+  }
+  return { text: button.text, callback_data: button.callbackData };
 }
