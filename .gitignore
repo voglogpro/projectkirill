@@ -9,3 +9,8 @@ artifacts/chrome-*/
 # Live preview build output
 /preview/
 tools/preview/.build/
+
+# HyperFrames workspace
+motion/node_modules/
+motion/videos/*/snapshots/
+motion/videos/*/.hyperframes/

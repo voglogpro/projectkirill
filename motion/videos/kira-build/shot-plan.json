@@ -1,0 +1,15 @@
+{
+  "envelope": { "width": 1920, "height": 1080, "duration": 21, "fps": 30, "format": "mp4" },
+  "category": "webpage",
+  "asset_needs": [],
+  "brief": "Одним непрерывным проездом камеры влево показать, как в KIRA собирается базовый Telegram-бот и Mini App: холст сценария с блоками и связями, проверка диалога в чате, сборка Mini App внутри телефона, запуск и итоговая карточка. Без озвучки и без стоковой графики: в кадре только интерфейс продукта. Палитра обложки: фон #0A0A12, плитки #12121F, акцент градиент #7C5CFF -> #2AABEE. Шрифты Unbounded (заголовки) и Onest (текст), подключены локально.",
+  "motion": {
+    "current": "left",
+    "seams": [
+      { "at": 5.6, "from": "canvas", "to": "chat", "axis": "x", "direction": "left", "technique": "camera-pan" },
+      { "at": 10.6, "from": "chat", "to": "miniapp", "axis": "x", "direction": "left", "technique": "camera-pan" },
+      { "at": 15.6, "from": "miniapp", "to": "launch", "axis": "x", "direction": "left", "technique": "camera-pan" }
+    ],
+    "carrier": "Блоки сценария и чат остаются видимыми у края кадра при каждом проезде, поэтому склейки нет вовсе — камера едет по одному холсту."
+  }
+}
