@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;700;800&family=Onest:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0A12; color: #F5F4FF; font-family: Onest, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    h1, h2, h3 { font-family: Unbounded, Onest, sans-serif; margin: 0; letter-spacing: -.04em; }
+    p { margin: 0; }
+  </style>
+</helmet>
+
+<div style="width: 980px; background: #0A0A12; padding: 36px 40px 40px;">
+  <div style="font-size: 11px; font-weight: 700; letter-spacing: .14em; color: #6F6C90;">СИСТЕМА</div>
+  <h2 style="margin-top: 10px; font-size: 30px; font-weight: 800;">Из чего собран сайт</h2>
+  <p style="margin-top: 10px; font-size: 14.5px; line-height: 1.65; color: #8E8CA8; max-width: 70ch;">Шаблонный сайт узнаётся по трём признакам: радужный градиент, стоковая иллюстрация и «текст слева, картинка справа». Здесь ничего этого нет: экран собран из плиток продукта, цвет один, а фигура — реальный интерфейс.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px;">
+    <div style="padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: #12121F;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ЦВЕТ</div>
+      <div style="display: grid; gap: 8px; margin-top: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 44px; height: 30px; border-radius: 9px; background: #0A0A12; border: 1px solid rgba(255,255,255,.12);"></span><span style="font-size: 12.5px;">#0A0A12 — фон, почти чёрный с синевой</span></div>
+        <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 44px; height: 30px; border-radius: 9px; background: #12121F;"></span><span style="font-size: 12.5px;">#12121F — плитка</span></div>
+        <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 44px; height: 30px; border-radius: 9px; background: #7C5CFF;"></span><span style="font-size: 12.5px;">#7C5CFF — фиолетовый акцент</span></div>
+        <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 44px; height: 30px; border-radius: 9px; background: #2AABEE;"></span><span style="font-size: 12.5px;">#2AABEE — синий Telegram</span></div>
+        <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 44px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, #7C5CFF, #2AABEE);"></span><span style="font-size: 12.5px;">Градиент — только на главной кнопке. Больше нигде.</span></div>
+      </div>
+    </div>
+
+    <div style="padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: #12121F;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ШРИФТ</div>
+      <div style="margin-top: 12px; font-family: Unbounded, sans-serif; font-size: 40px; font-weight: 800; letter-spacing: -.05em; line-height: 1;">Бот отвечает</div>
+      <div style="margin-top: 6px; font-size: 12px; color: #8E8CA8;">Unbounded 800 — широкий, с кириллицей, узнаётся с первого экрана</div>
+      <div style="margin-top: 18px; font-size: 16px; line-height: 1.6;">Соберите разговор мышкой и нажмите «Запустить».</div>
+      <div style="margin-top: 6px; font-size: 12px; color: #8E8CA8;">Onest 400–700 — текст, цифры, интерфейс</div>
+    </div>
+
+    <div style="padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: #12121F;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">СЕТКА</div>
+      <div style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; margin-top: 14px;">
+        <div style="grid-column: span 5; height: 44px; border-radius: 8px; background: rgba(124,92,255,.35);"></div>
+        <div style="grid-column: span 3; grid-row: span 2; border-radius: 8px; background: rgba(42,171,238,.35);"></div>
+        <div style="grid-column: span 2; height: 44px; border-radius: 8px; background: rgba(255,255,255,.12);"></div>
+        <div style="grid-column: span 2; height: 44px; border-radius: 8px; background: rgba(255,255,255,.12);"></div>
+        <div style="grid-column: span 5; height: 44px; border-radius: 8px; background: rgba(124,92,255,.35);"></div>
+        <div style="grid-column: span 4; height: 44px; border-radius: 8px; background: rgba(255,255,255,.12);"></div>
+      </div>
+      <div style="margin-top: 14px; font-size: 12.5px; line-height: 1.6; color: #8E8CA8;">12 колонок, плитки разной величины. Каждая плитка — кусок настоящего продукта, а не иконка с подписью.</div>
+    </div>
+
+    <div style="padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: #12121F;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ПРАВИЛА</div>
+      <div style="display: grid; gap: 10px; margin-top: 14px; font-size: 12.5px; line-height: 1.55; color: #C9C7E4;">
+        <span>· В шапке первого экрана — не больше восьми слов.</span>
+        <span>· Одна кнопка. Вторая — текстовой ссылкой.</span>
+        <span>· Ни одной стоковой картинки: только интерфейс продукта.</span>
+        <span>· Тёплого цвета нет вовсе, поэтому глаз идёт к градиентной кнопке.</span>
+        <span>· Всё, что показано, должно существовать в кабинете.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

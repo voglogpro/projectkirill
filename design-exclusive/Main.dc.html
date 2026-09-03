@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;700;800&family=Onest:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0A0A12; color: #F5F4FF; font-family: Onest, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    h1, h2, h3 { font-family: Unbounded, Onest, system-ui, sans-serif; margin: 0; letter-spacing: -.04em; }
+    p { margin: 0; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; background: #0A0A12; background-image: radial-gradient(680px 420px at 76% -8%, rgba(124,92,255,.22), transparent 70%), radial-gradient(560px 380px at 10% 24%, rgba(42,171,238,.12), transparent 72%);">
+
+  <!-- nav -->
+  <div style="display: flex; align-items: center; gap: 26px; padding: 26px 64px; border-bottom: 1px solid rgba(255,255,255,.07);">
+    <div style="display: flex; align-items: center; gap: 12px; flex: none;">
+      <div style="width: 34px; height: 34px; border-radius: 11px; border: 1px solid rgba(255,255,255,.14); background: #12121F; display: flex; align-items: center; justify-content: center;">
+        <span style="font-family: Unbounded, sans-serif; font-size: 14px; font-weight: 800; letter-spacing: -.04em; background: linear-gradient(135deg, #A78BFA, #2AABEE); -webkit-background-clip: text; background-clip: text; color: transparent;">K</span>
+      </div>
+      <span style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: .12em;">KIRA</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 26px; font-size: 13.5px; font-weight: 500; color: #8E8CA8; white-space: nowrap;">
+      <span>Как это работает</span><span>Тарифы</span><span>Отзывы</span><span>Почему так дёшево</span><span>Вопросы</span><span>О компании</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-left: auto; flex: none;">
+      <div style="padding: 9px 15px; border-radius: 10px; color: #C9C7E4; font-size: 13px; font-weight: 600; white-space: nowrap;">Бот под ключ</div>
+      <div style="padding: 9px 15px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; font-size: 13px; font-weight: 600;">Войти</div>
+      <div style="padding: 10px 18px; border-radius: 10px; background: linear-gradient(135deg, #7C5CFF, #2AABEE); font-size: 13px; font-weight: 700; white-space: nowrap;">Создать бота</div>
+    </div>
+  </div>
+
+  <!-- hero: badge, ≤8 words, one sentence, one button -->
+  <div style="display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 60px; padding: 78px 64px 46px;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .1em; color: #A9A6C9;">
+        <span style="width: 6px; height: 6px; border-radius: 999px; background: #2AABEE;"></span>
+        КОНСТРУКТОР TELEGRAM-БОТОВ
+      </div>
+      <h1 style="margin-top: 26px; font-size: 96px; line-height: .92; font-weight: 800;">Бот отвечает.<br><span style="color: #6F6C90;">Вы работаете.</span></h1>
+      <p style="margin-top: 26px; font-size: 18px; line-height: 1.6; color: #8E8CA8; max-width: 46ch;">Соберите разговор мышкой и нажмите «Запустить» — бота, токен и хостинг мы берём на себя.</p>
+      <div style="display: flex; align-items: center; gap: 16px; margin-top: 34px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 17px 28px; border-radius: 14px; background: linear-gradient(135deg, #7C5CFF, #2AABEE); font-size: 15.5px; font-weight: 700;">
+          Создать бота
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+        </div>
+        <span style="font-size: 14px; font-weight: 500; color: #8E8CA8;">или <span style="color: #F5F4FF; text-decoration: underline; text-underline-offset: 4px;">посмотреть пример</span></span>
+      </div>
+    </div>
+
+    <div style="text-align: right;">
+      <div style="font-family: Unbounded, sans-serif; font-size: 15px; font-weight: 500; color: #6F6C90; letter-spacing: -.02em;">01 / собрал</div>
+      <div style="font-family: Unbounded, sans-serif; font-size: 15px; font-weight: 500; color: #6F6C90; letter-spacing: -.02em; margin-top: 6px;">02 / проверил</div>
+      <div style="font-family: Unbounded, sans-serif; font-size: 15px; font-weight: 700; color: #F5F4FF; letter-spacing: -.02em; margin-top: 6px;">03 / запустил</div>
+    </div>
+  </div>
+
+  <!-- bento -->
+  <div style="display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 168px; gap: 14px; padding: 0 64px 64px;">
+
+    <!-- the canvas tile -->
+    <div style="grid-column: span 5; grid-row: span 2; position: relative; padding: 24px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ХОЛСТ СЦЕНАРИЯ</span>
+        <span style="font-size: 11px; font-weight: 600; color: #2AABEE;">черновик сохранён</span>
+      </div>
+      <div style="display: grid; justify-items: center; margin-top: 22px;">
+        <div style="width: 100%; max-width: 268px; padding: 12px 14px; border: 1px solid rgba(124,92,255,.4); border-radius: 14px; background: #191A2B;">
+          <div style="font-size: 9.5px; font-weight: 800; letter-spacing: .1em; color: #A78BFA;">СООБЩЕНИЕ</div>
+          <div style="margin-top: 6px; font-size: 13px; line-height: 1.45;">Здравствуйте! Записать вас или показать цены?</div>
+          <div style="display: flex; gap: 6px; margin-top: 10px;">
+            <span style="padding: 6px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; font-size: 11px; font-weight: 600;">Записаться</span>
+            <span style="padding: 6px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; font-size: 11px; font-weight: 600;">Цены</span>
+          </div>
+        </div>
+        <svg width="230" height="34" viewBox="0 0 230 34" style="stroke: rgba(124,92,255,.55); stroke-width: 1.6; stroke-dasharray: 4 5; fill: none;"><path d="M115 0 V12 H30 V34"></path><path d="M115 12 H200 V34"></path></svg>
+        <div style="display: flex; gap: 12px; width: 100%; max-width: 268px;">
+          <div style="flex: 1; padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: #191A2B;">
+            <div style="font-size: 9px; font-weight: 800; letter-spacing: .1em; color: #6F6C90;">ВОПРОС</div>
+            <div style="margin-top: 4px; font-size: 11.5px;">Как вас зовут?</div>
+          </div>
+          <div style="flex: 1; padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: #191A2B;">
+            <div style="font-size: 9px; font-weight: 800; letter-spacing: .1em; color: #6F6C90;">СООБЩЕНИЕ</div>
+            <div style="margin-top: 4px; font-size: 11.5px;">Стрижка — от 1 500 ₽</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); font-size: 11.5px; color: #6F6C90;">
+        <span>6 блоков · 5 связей</span><span>перетащите блок из палитры, чтобы добавить шаг</span>
+      </div>
+    </div>
+
+    <!-- phone tile -->
+    <div style="grid-column: span 3; grid-row: span 3; padding: 20px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F; display: grid; grid-template-rows: auto 1fr; gap: 16px;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ЧТО ВИДИТ КЛИЕНТ</span>
+      <div style="border-radius: 18px; overflow: hidden; background: #08080F; border: 1px solid rgba(255,255,255,.07);">
+        <div style="display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-bottom: 1px solid rgba(255,255,255,.07);">
+          <div style="width: 26px; height: 26px; border-radius: 999px; background: linear-gradient(135deg, #7C5CFF, #2AABEE);"></div>
+          <div style="display: grid; gap: 1px;"><span style="font-size: 12px; font-weight: 600;">Салон «Мята»</span><span style="font-size: 10px; color: #6F6C90;">бот · онлайн</span></div>
+        </div>
+        <div style="padding: 13px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="max-width: 88%; padding: 9px 12px; border-radius: 14px 14px 14px 4px; background: #191A2B; font-size: 12.5px; line-height: 1.45;">Здравствуйте! Записать вас или показать цены?</div>
+          <div style="display: flex; gap: 6px;">
+            <span style="flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; background: rgba(42,171,238,.14); color: #7DD3FC; font-size: 11.5px; font-weight: 600;">Записаться</span>
+            <span style="flex: 1; text-align: center; padding: 8px 4px; border-radius: 9px; background: rgba(42,171,238,.14); color: #7DD3FC; font-size: 11.5px; font-weight: 600;">Цены</span>
+          </div>
+          <div style="align-self: flex-end; padding: 9px 12px; border-radius: 14px 14px 4px 14px; background: linear-gradient(135deg, #7C5CFF, #2AABEE); font-size: 12.5px;">Записаться</div>
+          <div style="max-width: 88%; padding: 9px 12px; border-radius: 14px 14px 14px 4px; background: #191A2B; font-size: 12.5px;">Как вас зовут?</div>
+          <div style="align-self: flex-end; padding: 9px 12px; border-radius: 14px 14px 4px 14px; background: linear-gradient(135deg, #7C5CFF, #2AABEE); font-size: 12.5px;">Анна</div>
+          <div style="max-width: 88%; padding: 9px 12px; border-radius: 14px 14px 14px 4px; background: #191A2B; font-size: 12.5px; line-height: 1.45;">Записали, Анна! Перезвоним и подтвердим.</div>
+          <div style="display: flex; align-items: center; gap: 9px; margin-top: 6px; padding: 9px 12px; border-radius: 999px; background: #191A2B; color: #6F6C90; font-size: 12px;">
+            <span style="flex: 1;">Сообщение</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2AABEE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 3.5 2.8 11.2c-.8.3-.8 1.4 0 1.7l4.6 1.6 1.7 5c.3.8 1.3.9 1.8.3l2.5-3 4.7 3.5c.6.4 1.4.1 1.6-.6l3.3-15c.2-.8-.6-1.5-1.5-1.2z"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- price tile -->
+    <div style="grid-column: span 2; padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F; display: grid; align-content: space-between;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ПОДПИСКА</span>
+      <div>
+        <div style="font-family: Unbounded, sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -.05em;">350<span style="font-size: 18px;"> ₽</span></div>
+        <div style="margin-top: 4px; font-size: 12px; color: #8E8CA8;">в месяц за бота</div>
+      </div>
+    </div>
+
+    <!-- subscribers tile -->
+    <div style="grid-column: span 2; padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F; display: grid; align-content: space-between;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ВСЁ СРАЗУ</span>
+      <div>
+        <div style="font-family: Unbounded, sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -.05em;">650<span style="font-size: 18px;"> ₽</span></div>
+        <div style="margin-top: 4px; font-size: 12px; color: #8E8CA8;">бот, Mini App и сайт</div>
+      </div>
+    </div>
+
+    <!-- leads tile -->
+    <div style="grid-column: span 4; padding: 22px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">ЗАЯВКИ В КАБИНЕТЕ</span>
+        <span style="font-size: 11px; font-weight: 600; color: #2AABEE;">+3 сегодня</span>
+      </div>
+      <div style="display: grid; gap: 7px; margin-top: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; background: #191A2B; font-size: 12.5px;"><span>Анна · стрижка</span><span style="color: #6F6C90;">+7 900 123-45-67</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; background: #191A2B; font-size: 12.5px;"><span>Игорь · окрашивание</span><span style="color: #6F6C90;">+7 921 555-10-20</span></div>
+      </div>
+    </div>
+
+    <!-- launch tile -->
+    <div style="grid-column: span 5; padding: 22px 24px; border: 1px solid rgba(124,92,255,.28); border-radius: 22px; background: linear-gradient(120deg, rgba(124,92,255,.16), rgba(42,171,238,.1)); display: flex; align-items: center; gap: 20px;">
+      <div style="flex: 1;">
+        <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #A9A6C9;">ЗАПУСК</div>
+        <div style="margin-top: 8px; font-family: Unbounded, sans-serif; font-size: 19px; font-weight: 700;">Токен, меню, хостинг — на нас</div>
+        <div style="margin-top: 6px; font-size: 12.5px; color: #A9A6C9;">Вам остаётся текст. Подписчиков сколько угодно — цена та же.</div>
+      </div>
+      <div style="flex: none; padding: 13px 20px; border-radius: 12px; background: #F5F4FF; color: #0A0A12; font-size: 13.5px; font-weight: 700;">Запустить</div>
+    </div>
+
+
+    <!-- turnkey tile -->
+    <div style="grid-column: span 4; padding: 22px 24px; border: 1px solid rgba(255,255,255,.08); border-radius: 22px; background: #12121F; display: flex; align-items: center; gap: 18px;">
+      <div style="flex: 1;">
+        <div style="font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #6F6C90;">НЕКОГДА СОБИРАТЬ?</div>
+        <div style="margin-top: 8px; font-family: Unbounded, sans-serif; font-size: 17px; font-weight: 700; white-space: nowrap;">Соберём за вас — от 4 900 ₽</div>
+      </div>
+      <div style="flex: none; padding: 12px 18px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; font-size: 13px; font-weight: 600;">Подробнее</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
