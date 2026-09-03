@@ -7,16 +7,17 @@ import { Landing } from "./components/Landing";
 import { LaunchModal } from "./components/LaunchModal";
 import { LegalPage } from "./components/LegalPage";
 import { Onboarding } from "./components/Onboarding";
+import { Service } from "./components/Service";
 import { PreviewModal } from "./components/PreviewModal";
 import { FlowEditor } from "./components/FlowEditor";
 import { createFlowFromTemplate, loadFlow, pageTemplateForFlow, saveFlow, type FlowTemplateId } from "./flow-store";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
 import type { ProjectState } from "./types";
 
-type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "flow" | "legal";
+type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
-const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy" };
-function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
+const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
+function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => screenFromPath(location.pathname));
@@ -106,7 +107,8 @@ export function App() {
   function preview(current: ProjectState = project) { const next = { ...current, previewed: true }; updateProject(next); setPreviewOpen(true); }
 
   return <>
-    {screen === "landing" && <Landing onStart={(value) => void start(value)} />}
+    {screen === "landing" && <Landing onStart={(value) => void start(value)} onService={() => navigate("service")} />}
+    {screen === "service" && <Service onStart={() => void start()} onHome={() => navigate("landing")} />}
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("landing")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
     {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
