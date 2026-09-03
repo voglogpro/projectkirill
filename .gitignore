@@ -5,3 +5,7 @@ coverage/
 *.log
 *.tsbuildinfo
 artifacts/chrome-*/
+
+# Live preview build output
+/preview/
+tools/preview/.build/

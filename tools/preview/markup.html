@@ -1,0 +1,84 @@
+<header class="rail">
+  <div class="rail-id">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <b>Стенд TMA Studio</b>
+      <small>конструктор · бот · Mini App в одном окне</small>
+    </div>
+  </div>
+  <dl class="rail-status">
+    <div><dt>Проект</dt><dd id="status-project">—</dd></div>
+    <div><dt>Состояние</dt><dd><span id="status-state" class="state">—</span></dd></div>
+    <div><dt>Бот</dt><dd id="status-bot" class="mono">—</dd></div>
+    <div><dt>Публикация</dt><dd id="status-version" class="mono">—</dd></div>
+    <div><dt>Инбокс</dt><dd id="status-leads" class="mono">0 заявок</dd></div>
+  </dl>
+  <div class="rail-actions">
+    <div class="segmented" role="group" aria-label="Раскладка">
+      <button type="button" data-layout="console">Конструктор</button>
+      <button type="button" data-layout="split">Рядом</button>
+      <button type="button" data-layout="phone">Телефон</button>
+    </div>
+    <button type="button" id="reset-button" class="ghost">Сбросить</button>
+  </div>
+</header>
+
+<main class="stage">
+  <section class="pane pane-console" aria-label="Панель конструктора">
+    <div class="browser">
+      <div class="browser-bar">
+        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="url mono">console.tmastudio.ru<span>/workspace</span></span>
+        <button type="button" id="reload-console" class="ghost small">Перезагрузить</button>
+      </div>
+      <iframe id="console-frame" title="Личный кабинет и конструктор TMA Studio"></iframe>
+    </div>
+    <p class="note">Внутри рамки работает собранный бандл <code class="mono">apps/web</code>. Запросы <code class="mono">/v1/*</code> обслуживает встроенный стенд-бэкенд: регистрация, черновики, оплата и публикация проходят целиком, но без сети и без настоящего Telegram.</p>
+  </section>
+
+  <section class="pane pane-phone" aria-label="Телефон клиента">
+    <div class="segmented phone-switch" role="group" aria-label="Экран телефона">
+      <button type="button" data-phone="telegram">Чат с ботом</button>
+      <button type="button" data-phone="mini">Mini App</button>
+    </div>
+
+    <div class="phone" id="phone">
+      <div class="phone-screen">
+        <div class="screen" id="phone-telegram">
+          <header class="chat-head">
+            <span class="avatar" aria-hidden="true"></span>
+            <div><b id="chat-title">Ваш бот</b><small id="chat-subtitle">ожидает подключения</small></div>
+          </header>
+          <div class="chat-log" id="chat-log"></div>
+          <form class="chat-form" id="chat-form">
+            <button type="button" id="chat-menu" class="menu-button">Меню</button>
+            <input id="chat-input" name="message" placeholder="Сообщение" autocomplete="off">
+            <button type="submit" class="send" aria-label="Отправить">→</button>
+          </form>
+        </div>
+
+        <div class="screen" id="phone-mini" hidden>
+          <header class="mini-head">
+            <button type="button" id="mini-back" class="mini-back" hidden aria-label="Назад">‹</button>
+            <b>Mini App</b>
+            <span class="mono" id="mini-tag">telegram</span>
+          </header>
+          <div class="mini-body">
+            <iframe id="mini-frame" title="Mini App клиента"></iframe>
+            <div class="mini-empty" id="mini-empty" hidden><p id="mini-empty-text"></p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-controls">
+      <div class="segmented" role="group" aria-label="Источник Mini App">
+        <button type="button" data-source="draft">Черновик</button>
+        <button type="button" data-source="published">Опубликовано</button>
+      </div>
+      <button type="button" id="theme-toggle" class="ghost small">Тёмная тема</button>
+      <button type="button" id="start-button" class="ghost small">/start</button>
+    </div>
+    <p class="note">Чат повторяет логику <code class="mono">telegram-update-worker</code>: ответ приходит только на <code class="mono">/start</code>, кнопка меню открывает опубликованный релиз. «Черновик» показывает то, что прямо сейчас лежит в редакторе.</p>
+  </section>
+</main>
