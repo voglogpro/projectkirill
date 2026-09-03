@@ -1,4 +1,5 @@
 import type { BotFlowDocument, FlowNode } from "../../../src/domain/bot-flow";
+import type { TemplateId } from "./types";
 
 const STORAGE_KEY = "tma-studio-flow-v1";
 
@@ -71,4 +72,101 @@ export function loadFlow(): BotFlowDocument {
 }
 export function saveFlow(flow: BotFlowDocument): void {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(flow)); } catch { /* the canvas keeps working from memory */ }
+}
+
+export type FlowTemplateId = "leads" | "booking" | "catalog" | "faq" | "blank";
+
+/** Bot scenarios are the front door now, so onboarding picks one of these. */
+export const flowTemplateOptions: Array<{ id: FlowTemplateId; title: string; description: string }> = [
+  { id: "leads", title: "Сбор заявок", description: "Спросит имя и телефон, ответы придут в кабинет" },
+  { id: "booking", title: "Онлайн-запись", description: "Клиент выбирает услугу и оставляет контакты" },
+  { id: "catalog", title: "Витрина и цены", description: "Кнопки по разделам, цены и переход к заказу" },
+  { id: "faq", title: "Ответы на вопросы", description: "Частые вопросы кнопками и передача оператору" },
+  { id: "blank", title: "С нуля", description: "Одна команда и одно сообщение" },
+];
+
+/** Mini App page template that fits a bot scenario, for when the owner adds one. */
+export const pageTemplateForFlow: Record<FlowTemplateId, TemplateId> = {
+  leads: "leads", booking: "booking", catalog: "catalog", faq: "services", blank: "blank",
+};
+
+export function createFlowFromTemplate(template: FlowTemplateId, name: string): BotFlowDocument {
+  const id = () => crypto.randomUUID();
+  const at = (x: number, y: number) => ({ x, y });
+  const start = id();
+  const startNode: FlowNode = { id: start, version: 1, position: at(0, 0), type: "start", props: { command: "start", description: "Первое сообщение" } };
+  const metadata = { name: name.trim() || flowTemplateOptions.find((item) => item.id === template)?.title || "Мой бот" };
+
+  if (template === "blank") {
+    const hello = id();
+    return { schemaVersion: 1, metadata, nodes: [startNode, { id: hello, version: 1, position: at(0, 150), type: "message", props: { text: "Здравствуйте! Чем помочь?", buttons: [] } }], edges: [{ id: "e1", from: start, fromHandle: "next", to: hello }] };
+  }
+
+  if (template === "booking") {
+    const hello = id(), askName = id(), askPhone = id(), done = id();
+    return {
+      schemaVersion: 1, metadata,
+      nodes: [
+        startNode,
+        { id: hello, version: 1, position: at(0, 150), type: "message", props: { text: "Здравствуйте! На какую услугу записать?", buttons: [{ id: "haircut", kind: "next", label: "Стрижка" }, { id: "colour", kind: "next", label: "Окрашивание" }] } },
+        { id: askName, version: 1, position: at(-200, 400), type: "question", props: { text: "Как вас зовут?", variable: "name", expects: "any", retryText: "Напишите имя текстом, пожалуйста." } },
+        { id: askPhone, version: 1, position: at(-200, 580), type: "question", props: { text: "Оставьте телефон — подтвердим время.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" } },
+        { id: done, version: 1, position: at(-200, 760), type: "message", props: { text: "Записали, {{name}}! Перезвоним на {{phone}} и подтвердим время.", buttons: [] } },
+      ],
+      edges: [
+        { id: "e1", from: start, fromHandle: "next", to: hello },
+        { id: "e2", from: hello, fromHandle: "haircut", to: askName },
+        { id: "e3", from: hello, fromHandle: "colour", to: askName },
+        { id: "e4", from: askName, fromHandle: "next", to: askPhone },
+        { id: "e5", from: askPhone, fromHandle: "next", to: done },
+      ],
+    };
+  }
+
+  if (template === "catalog") {
+    const hello = id(), prices = id(), delivery = id(), askPhone = id(), done = id();
+    return {
+      schemaVersion: 1, metadata,
+      nodes: [
+        startNode,
+        { id: hello, version: 1, position: at(0, 150), type: "message", props: { text: "Здравствуйте! Что показать?", buttons: [{ id: "prices", kind: "next", label: "Цены" }, { id: "delivery", kind: "next", label: "Доставка" }, { id: "order", kind: "next", label: "Заказать" }] } },
+        { id: prices, version: 1, position: at(-260, 420), type: "message", props: { text: "Основная позиция — от 1 500 ₽.\nКомплект — от 3 900 ₽.", buttons: [{ id: "order", kind: "next", label: "Заказать" }] } },
+        { id: delivery, version: 1, position: at(20, 420), type: "message", props: { text: "Доставка по городу — на следующий день, самовывоз — в тот же день.", buttons: [{ id: "order", kind: "next", label: "Заказать" }] } },
+        { id: askPhone, version: 1, position: at(300, 560), type: "question", props: { text: "Оставьте телефон — менеджер соберёт заказ.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" } },
+        { id: done, version: 1, position: at(300, 740), type: "message", props: { text: "Спасибо! Свяжемся по номеру {{phone}}.", buttons: [] } },
+      ],
+      edges: [
+        { id: "e1", from: start, fromHandle: "next", to: hello },
+        { id: "e2", from: hello, fromHandle: "prices", to: prices },
+        { id: "e3", from: hello, fromHandle: "delivery", to: delivery },
+        { id: "e4", from: hello, fromHandle: "order", to: askPhone },
+        { id: "e5", from: prices, fromHandle: "order", to: askPhone },
+        { id: "e6", from: delivery, fromHandle: "order", to: askPhone },
+        { id: "e7", from: askPhone, fromHandle: "next", to: done },
+      ],
+    };
+  }
+
+  if (template === "faq") {
+    const hello = id(), hours = id(), price = id(), operator = id();
+    return {
+      schemaVersion: 1, metadata,
+      nodes: [
+        startNode,
+        { id: hello, version: 1, position: at(0, 150), type: "message", props: { text: "Здравствуйте! Выберите вопрос или напишите свой.", buttons: [{ id: "hours", kind: "next", label: "Часы работы" }, { id: "price", kind: "next", label: "Сколько стоит" }, { id: "human", kind: "next", label: "Позвать человека" }] } },
+        { id: hours, version: 1, position: at(-260, 420), type: "message", props: { text: "Работаем с 10:00 до 20:00 без выходных.", buttons: [] } },
+        { id: price, version: 1, position: at(20, 420), type: "message", props: { text: "Консультация бесплатная, работы — от 1 500 ₽.", buttons: [] } },
+        { id: operator, version: 1, position: at(300, 420), type: "handoff", props: { text: "Передаю разговор оператору — ответим в рабочее время." } },
+      ],
+      edges: [
+        { id: "e1", from: start, fromHandle: "next", to: hello },
+        { id: "e2", from: hello, fromHandle: "hours", to: hours },
+        { id: "e3", from: hello, fromHandle: "price", to: price },
+        { id: "e4", from: hello, fromHandle: "human", to: operator },
+      ],
+    };
+  }
+
+  const starter = createStarterFlow(metadata.name);
+  return { ...starter, metadata };
 }

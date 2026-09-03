@@ -19,9 +19,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect } from "react";
-import type { TemplateId } from "../types";
+import type { FlowTemplateId } from "../flow-store";
 
-type StartIntent = { mode?: "register" | "login"; templateId?: TemplateId; plan?: "solo" | "trio" };
+type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
 
 const features = [
   { icon: MousePointer2, title: "Визуальная сборка", text: "Добавляйте страницы и блоки, меняйте контент и сразу смотрите результат на экране телефона." },

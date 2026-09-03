@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { createRemoteProject, ensureRemoteProject, getEntitlement, hasSession, listRemoteProjects, loadRemoteProject, publishProject, saveRemoteProject } from "./api";
+import { createRemoteProject, ensureRemoteProject, getEntitlement, hasSession, listRemoteProjects, loadRemoteFlow, loadRemoteProject, publishProject, saveRemoteFlow, saveRemoteProject } from "./api";
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
@@ -9,12 +9,12 @@ import { LegalPage } from "./components/LegalPage";
 import { Onboarding } from "./components/Onboarding";
 import { PreviewModal } from "./components/PreviewModal";
 import { FlowEditor } from "./components/FlowEditor";
-import { loadFlow, saveFlow } from "./flow-store";
+import { createFlowFromTemplate, loadFlow, pageTemplateForFlow, saveFlow, type FlowTemplateId } from "./flow-store";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
-import type { ProjectState, TemplateId } from "./types";
+import type { ProjectState } from "./types";
 
 type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "flow" | "legal";
-type StartIntent = { mode?: "register" | "login"; templateId?: TemplateId; plan?: "solo" | "trio" };
+type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
 const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy" };
 function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
 
@@ -64,13 +64,23 @@ export function App() {
     finally { setBusy(false); }
   }
 
-  async function finishOnboarding(templateId: TemplateId, name: string) {
+  async function finishOnboarding(templateId: FlowTemplateId, name: string) {
     setBusy(true);
-    const local = createProjectFromTemplate(templateId, name);
+    // The bot is the product; the Mini App page is seeded to match and waits
+    // until the owner adds it as the second product.
+    const local = createProjectFromTemplate(pageTemplateForFlow[templateId], name);
+    const scenario = createFlowFromTemplate(templateId, name);
     try {
       const next = hasSession() ? await createRemoteProject(local) : local;
-      updateProject(next); navigate("builder"); setToast("Проект создан — начните с замены текста под свой бизнес");
-    } catch (reason) { setToast(messageFrom(reason, "Не удалось создать проект")); }
+      // The project is created with an empty scenario, so the chosen one has to
+      // reach the server before the editor opens and loads from it.
+      if (hasSession()) {
+        const seeded = await loadRemoteFlow(next.id);
+        await saveRemoteFlow(next.id, scenario, seeded.revision);
+      }
+      updateProject(next); setFlow(scenario); saveFlow(scenario);
+      navigate("flow"); setToast("Бот собран — поменяйте тексты и проверьте его в чате");
+    } catch (reason) { setToast(messageFrom(reason, "Не удалось создать бота")); }
     finally { setBusy(false); }
   }
 

@@ -1,7 +1,7 @@
 export type BlockType = "heading" | "text" | "button" | "product" | "form" | "media";
 export type TemplateId = "catalog" | "booking" | "leads" | "services" | "blank";
 export type BuilderTab = "blocks" | "pages" | "sections";
-export type DashboardSection = "overview" | "bot" | "leads" | "design" | "settings" | "help";
+export type DashboardSection = "overview" | "flow" | "bot" | "leads" | "design" | "settings" | "help";
 export type BotConnectionStatus = "configuring" | "active" | "error" | "revoked";
 
 export type BlockAction =
