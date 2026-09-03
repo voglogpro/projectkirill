@@ -11,10 +11,15 @@ describe("builder templates", () => {
     expect(projects.find((project) => project.templateId === "booking")?.pages[0]?.blocks.some((block) => block.type === "form")).toBe(true);
   });
 
-  it("creates a publishable media block with an HTTPS source", () => {
+  it("creates a publishable media block that needs no third-party host", () => {
     const media = createBlock("media");
     expect(media.type).toBe("media");
-    if (media.type === "media") expect(media.props.url).toMatch(/^https:\/\//);
+    if (media.type !== "media") return;
+    // The backend accepts any parseable URL under 2048 characters; an inline
+    // sample also renders inside Telegram without an outbound request.
+    expect(media.props.url.startsWith("data:image/svg+xml,")).toBe(true);
+    expect(media.props.url.length).toBeLessThan(2048);
+    expect(() => new URL(media.props.url)).not.toThrow();
   });
 
   it("creates form fields with backend-required text defaults", () => {

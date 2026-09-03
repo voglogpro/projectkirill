@@ -42,6 +42,10 @@ export function loadProject(): ProjectState {
 export function saveProject(project: ProjectState): void { localStorage.setItem(scopedKey(), JSON.stringify(project)); }
 export function clearLocalProject(): void { localStorage.removeItem(scopedKey()); }
 
+// Inline so a new image block renders immediately and never depends on a
+// third-party placeholder host.
+const sampleImage = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22%23e9ece5%22%2F%3E%3Ccircle%20cx%3D%22476%22%20cy%3D%22104%22%20r%3D%2236%22%20fill%3D%22%23cfd7c6%22%2F%3E%3Cpath%20d%3D%22M0%20360%20190%20168%20328%20300%20432%20214%20640%20360Z%22%20fill%3D%22%23cfd7c6%22%2F%3E%3Cpath%20d%3D%22M0%20360%20222%20210%20396%20360Z%22%20fill%3D%22%23bcc7b1%22%2F%3E%3C%2Fsvg%3E";
+
 export function createBlock(type: BuilderBlock["type"]): BuilderBlock {
   const id = crypto.randomUUID();
   switch (type) {
@@ -50,7 +54,7 @@ export function createBlock(type: BuilderBlock["type"]): BuilderBlock {
     case "button": return { id, version: 1, type, props: { label: "Нажать", style: "primary", action: { kind: "url", url: "https://t.me" }, haptic: "light", fullWidth: true } };
     case "product": return { id, version: 1, type, props: { productId: id, title: "Название товара", description: "Короткое описание", price: { amountMinor: 99000, currency: "RUB" }, cta: { label: "Заказать", action: { kind: "url", url: "https://t.me" } } } };
     case "form": return { id, version: 1, type, props: { formKey: `form-${id.slice(0, 6)}`, fields: [{ id: "name", kind: "text", label: "Ваше имя", required: true, multiline: false, maxLength: 120 }, { id: "phone", kind: "phone", label: "Телефон", required: true }], submitLabel: "Отправить", successMessage: "Спасибо! Мы скоро свяжемся.", hapticOnSuccess: true } };
-    case "media": return { id, version: 1, type, props: { kind: "image", url: "https://placehold.co/1200x675/e9ece5/667066?text=Image", alt: "Изображение", aspectRatio: "16:9" } };
+    case "media": return { id, version: 1, type, props: { kind: "image", url: sampleImage, alt: "Пример изображения", aspectRatio: "16:9" } };
   }
 }
 
