@@ -8,17 +8,20 @@ import { LaunchModal } from "./components/LaunchModal";
 import { LegalPage } from "./components/LegalPage";
 import { Onboarding } from "./components/Onboarding";
 import { PreviewModal } from "./components/PreviewModal";
+import { FlowEditor } from "./components/FlowEditor";
+import { loadFlow, saveFlow } from "./flow-store";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
 import type { ProjectState, TemplateId } from "./types";
 
-type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "legal";
+type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "flow" | "legal";
 type StartIntent = { mode?: "register" | "login"; templateId?: TemplateId; plan?: "solo" | "trio" };
-const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", legal: "/privacy" };
-function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
+const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy" };
+function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => screenFromPath(location.pathname));
   const [project, setProject] = useState<ProjectState>(loadProject);
+  const [flow, setFlow] = useState(loadFlow);
   const [intent, setIntent] = useState<StartIntent>({});
   const [launchOpen, setLaunchOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -96,7 +99,8 @@ export function App() {
     {screen === "landing" && <Landing onStart={(value) => void start(value)} />}
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("landing")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
-    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "flow" && <FlowEditor flow={flow} onChange={(next) => { setFlow(next); saveFlow(next); }} onBack={() => navigate("dashboard")} onLaunch={() => void launch()} />}
     {screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => setAuthOpen(false)} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); navigate("onboarding"); }} />}
     {launchOpen && <LaunchModal projectId={project.id} initialPlan={project.plan === "trio" ? "trio" : intent.plan} existingBot={project.botUsername && project.botStatus === "active" ? { username: project.botUsername, miniAppUrl: project.miniAppUrl } : undefined} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl, botStatus: "active", previewed: true, hasPendingChanges: false }); setToast("Бот опубликован и готов принимать клиентов"); }} />}
