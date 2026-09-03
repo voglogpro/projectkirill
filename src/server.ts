@@ -134,8 +134,16 @@ export async function buildApp() {
 
   app.get("/health/live", async () => ({ status: "ok" }));
   app.get("/health/ready", async (_request, reply) => {
-    await sql`SELECT 1`;
-    return reply.send({ status: "ok" });
+    // The newest applied migration tells the owner, from a phone, whether the
+    // deployment is running new code or an older image that was only restarted.
+    const rows = await sql<{ name: string; applied_at: Date }[]>`
+      SELECT name, applied_at FROM schema_migrations ORDER BY name DESC LIMIT 1
+    `;
+    const latest = rows[0];
+    return reply.send({
+      status: "ok",
+      ...(latest === undefined ? {} : { schema: latest.name, schemaAppliedAt: latest.applied_at.toISOString() }),
+    });
   });
   return app;
 }
