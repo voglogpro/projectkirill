@@ -42,7 +42,7 @@ const stages = [
 export function Service({ onStart, onHome }: { onStart: () => void; onHome: () => void }) {
   return <div className="landing service-page">
     <header className="landing-nav">
-      <button className="brand" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span><span>TMA Studio<small>боты · Mini App · сайты</small></span></button>
+      <button className="brand" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></button>
       <nav aria-label="Навигация по странице">
         <a href="#packages">Цены</a>
         <a href="#stages">Как проходит</a>
@@ -128,7 +128,7 @@ export function Service({ onStart, onHome }: { onStart: () => void; onHome: () =
     </main>
 
     <footer>
-      <button className="brand" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span><span>TMA Studio<small>боты · Mini App · сайты</small></span></button>
+      <button className="brand" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></button>
       <div className="footer-links"><button onClick={onHome}>Главная</button><a href={`mailto:${CONTACT_EMAIL}`}>Почта</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a></div>
       <span>© 2026. Сделано для дела в Telegram.</span>
     </footer>

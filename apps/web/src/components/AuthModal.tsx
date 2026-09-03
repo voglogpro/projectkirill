@@ -43,7 +43,7 @@ export function AuthModal({ initialMode = "register", onClose, onAuthenticated, 
   return <div className="modal-backdrop auth-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
     <form className="auth-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="auth-title" autoComplete="on">
       <button type="button" className="modal-close" onClick={onClose} aria-label="Закрыть окно"><X /></button>
-      <div className="brand auth-brand"><span className="brand-mark"><Bot /></span>TMA Studio</div>
+      <div className="brand auth-brand"><span className="brand-mark"><Bot /></span>KIRA</div>
       <div className="auth-heading">
         <h2 id="auth-title">{mode === "register" ? "Создайте аккаунт" : "С возвращением"}</h2>
         <p>{mode === "register" ? "Собирайте проект бесплатно. Оплата понадобится только перед публикацией." : "Войдите, чтобы продолжить работу."}</p>

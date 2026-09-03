@@ -44,7 +44,7 @@ export function Dashboard(props: Props) {
   function openSection(next: DashboardSection) { if (next === "flow") { onEditFlow(); return; } if (next === "design") { onEdit(); return; } setSection(next); }
 
   return <div className="workspace"><aside className="app-sidebar">
-    <button className="brand bare" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span>TMA Studio</button>
+    <button className="brand bare" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span>KIRA</button>
     <div className="project-picker"><select name="desktop-project" value={project.id} aria-label="Текущий проект" onChange={(event) => void onOpenProject(event.target.value)}>{projects.length === 0 && <option value={project.id}>{project.name}</option>}{projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button onClick={onNewProject} aria-label="Создать проект"><Plus /></button></div>
     <nav>{nav.map(({ id, label, icon: Icon }) => <button key={id} className={section === id ? "active" : ""} onClick={() => openSection(id)}><Icon />{label}</button>)}</nav>
     <div className="sidebar-plan"><span>{project.plan === "free" ? "Бесплатный конструктор" : project.plan === "solo" ? "Тариф: Один бот" : "Тариф: Три бота"}</span><small>{project.plan === "free" ? `${projects.length || 1} ${projects.length === 1 ? "проект" : "проекта"}` : `Активные боты: ${activeBots} из ${project.plan === "trio" ? 3 : 1}`}</small><button onClick={primaryAction}>{connectionNeedsAttention ? "Переподключить бота" : isLive ? hasPendingChanges ? "Опубликовать изменения" : "Открыть preview" : project.status === "active" ? "Продлить доступ" : "Запустить от 350 ₽"}</button></div>

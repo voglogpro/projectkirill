@@ -220,7 +220,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto!important; transition: none!important; animation: none!important; } }
 
-/* Ruby Workspace brand system — independent TMA Studio visual language. */
+/* Ruby Workspace brand system — independent KIRA visual language. */
 :root {
   color: #111a14;
   background: #fafcf9;
@@ -867,3 +867,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .how-steps button:not(.active) small { display: none; }
   .how-steps button:not(.active) { padding-block: 12px; }
 }
+
+/* Landing header: one line, nothing wrapped, every control visible */
+.landing-nav { gap: 20px; padding-inline: max(20px,calc((100vw - 1320px)/2)); }
+.landing-nav .brand { flex: none; }
+.landing-nav .brand > span:not(.brand-mark) { display: grid; }
+.landing-nav .brand > span:not(.brand-mark) small { white-space: nowrap; }
+.landing-nav nav { flex: 0 1 auto; gap: 22px; min-width: 0; }
+.landing-nav nav a { white-space: nowrap; font-size: 13.5px; }
+.nav-actions { flex: none; gap: 10px; }
+.nav-service,.nav-login,.nav-actions .primary-button { white-space: nowrap; }
+.nav-login { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); font-size: 13px; font-weight: 700; }
+.nav-login:hover { border-color: var(--brand-500); color: var(--brand-700); background: var(--brand-50); }
+.nav-actions .primary-button { min-height: 40px; padding: 0 18px; font-size: 13px; }
+.nav-service { min-height: 40px; font-size: 13px; }
+@media (max-width: 1280px) { .landing-nav nav { gap: 16px; } .landing-nav nav a { font-size: 13px; } }

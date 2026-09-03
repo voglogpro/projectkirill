@@ -6,7 +6,7 @@ export function Onboarding({ initialTemplate = "leads", pending, onBack, onCreat
   const [template, setTemplate] = useState<FlowTemplateId>(initialTemplate);
   const [name, setName] = useState("");
   return <main className="onboarding">
-    <header><button className="brand bare" onClick={onBack}><span className="brand-mark"><Bot /></span>TMA Studio</button><button className="back-link" onClick={onBack}><ArrowLeft /> На главную</button></header>
+    <header><button className="brand bare" onClick={onBack}><span className="brand-mark"><Bot /></span>KIRA</button><button className="back-link" onClick={onBack}><ArrowLeft /> На главную</button></header>
     <section>
       <div className="onboarding-heading"><span>ШАГ 1 · СЦЕНАРИЙ БОТА</span><h1>Что должен делать ваш бот?</h1><p>Возьмите готовый диалог — сообщения, кнопки и вопросы потом меняются на холсте.</p></div>
       <div className="onboarding-journey" aria-label="Этапы запуска"><span className="active"><LayoutTemplate />Сценарий</span><i /><span><Paintbrush />Правки</span><i /><span><Bot />Проверка в чате</span><i /><span><Rocket />Запуск</span></div>

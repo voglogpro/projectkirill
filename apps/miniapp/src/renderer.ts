@@ -13,7 +13,7 @@ export function renderApp(root: HTMLElement, manifest: AppManifest): void {
     const shell = element("main", "app-shell");
     telegram.setBackHandler(history.length === 0 ? undefined : () => { const previous = history.pop(); if (previous) { currentPageId = previous; draw(); } });
     for (const block of page.blocks) shell.append(renderBlock(block, manifest.project.publicId, page, navigate));
-    const footer = element("footer"); footer.textContent = "Работает на TMA Studio"; shell.append(footer); root.append(shell);
+    const footer = element("footer"); footer.textContent = "Работает на KIRA"; shell.append(footer); root.append(shell);
   };
   draw();
 }

@@ -107,7 +107,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
 
   return <div className="landing">
     <header className="landing-nav">
-      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>TMA Studio<small>боты · Mini App · сайты</small></span></a>
+      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
       <nav aria-label="Навигация по странице">
         <a href="#how">Как это работает</a>
         <a href="#pricing">Тарифы</a>
@@ -226,7 +226,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="about" id="about">
         <div className="section-heading"><span>О КОМПАНИИ</span><h2>Маленькая студия, а не корпорация</h2></div>
         <div className="about-grid">
-          <p>TMA Studio делает один инструмент и делает его хорошо: конструктор ботов для тех, кто ведёт дело руками — мастеров, салонов, небольших магазинов, репетиторов, локальных сервисов.</p>
+          <p>KIRA делает один инструмент и делает его хорошо: конструктор ботов для тех, кто ведёт дело руками — мастеров, салонов, небольших магазинов, репетиторов, локальных сервисов.</p>
           <p>Мы считаем, что платить за автоматизацию должно быть не страшно. Поэтому берём фиксированную сумму за собранные продукты и не увеличиваем счёт, когда у вас становится больше клиентов. Растёте вы — не растёт наш тариф.</p>
           <p>Пишите напрямую: <a href="mailto:support@tmastudio.ru">support@tmastudio.ru</a>. Отвечает человек, а не бот — иронично, но так честнее.</p>
         </div>
@@ -251,7 +251,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="final-cta"><div><span>ГОТОВЫ НАЧАТЬ?</span><h2>Соберите бота прямо сейчас</h2><p>Бесплатно, без карты и без установки чего-либо.</p></div><button className="cta-light" onClick={() => onStart()}>Создать бота <ArrowRight /></button></section>
     </main>
 
-    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>TMA Studio<small>боты · Mini App · сайты</small></span></a><div className="footer-links"><a href="#how">Как это работает</a><a href="#pricing">Тарифы</a><button onClick={onService}>Бот под ключ</button><a href="#about">О компании</a><a href="mailto:support@tmastudio.ru">Поддержка</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a></div><span>© 2026. Сделано для дела в Telegram.</span></footer>
+    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a><div className="footer-links"><a href="#how">Как это работает</a><a href="#pricing">Тарифы</a><button onClick={onService}>Бот под ключ</button><a href="#about">О компании</a><a href="mailto:support@tmastudio.ru">Поддержка</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a></div><span>© 2026. Сделано для дела в Telegram.</span></footer>
   </div>;
 }
 
@@ -372,7 +372,7 @@ function ChatDemo() {
       </div>)}
       {waiting && <div className="chat-msg bot"><div className="chat-bubble typing" aria-label="Бот печатает"><i /><i /><i /></div></div>}
     </div>
-    <footer>Так выглядит бот, собранный на TMA Studio</footer>
+    <footer>Так выглядит бот, собранный на KIRA</footer>
   </div>;
 }
 
