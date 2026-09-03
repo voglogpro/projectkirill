@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Onest:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0E4A2E; color: #FFFFFF; font-family: Onest, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    h1, h2, h3 { font-family: Unbounded, Onest, system-ui, sans-serif; margin: 0; letter-spacing: -.025em; }
+    p { margin: 0; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; background: #0E4A2E; background-image: radial-gradient(900px 460px at 82% 12%, rgba(23,120,75,.55), transparent 70%), radial-gradient(620px 420px at 6% 92%, rgba(243,201,105,.14), transparent 70%);">
+
+  <!-- nav -->
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: 24px 72px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 40px; height: 40px; border-radius: 13px; background: #FFFFFF; display: flex; align-items: center; justify-content: center;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0E4A2E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"></rect><path d="M12 8V4"></path><circle cx="9" cy="14" r="1"></circle><circle cx="15" cy="14" r="1"></circle></svg>
+      </div>
+      <span style="font-family: Unbounded, sans-serif; font-weight: 700; font-size: 16px;">TMA Studio</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 30px; font-size: 14px; font-weight: 500; color: #C6DCCD;">
+      <span>Что умеет</span><span>Сценарии</span><span>Тарифы</span><span>О нас</span><span>Вопросы</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <span style="font-size: 14px; font-weight: 600; color: #C6DCCD;">Войти</span>
+      <div style="padding: 12px 22px; border-radius: 12px; background: #F3C969; color: #4A3708; font-size: 14px; font-weight: 700;">Создать бота</div>
+    </div>
+  </div>
+
+  <!-- hero -->
+  <div style="display: grid; grid-template-columns: 1.05fr 1fr; gap: 64px; align-items: center; padding: 62px 72px 72px;">
+    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 24px;">
+      <div style="display: flex; align-items: center; gap: 9px; padding: 8px 15px; border-radius: 999px; background: rgba(255,255,255,.12); color: #DCEFE0; font-size: 12px; font-weight: 600; letter-spacing: .05em;">
+        <span style="width: 7px; height: 7px; border-radius: 999px; background: #7BE0A5;"></span>
+        РАБОТАЕТ КРУГЛОСУТОЧНО В TELEGRAM
+      </div>
+      <h1 style="font-size: 68px; line-height: .99; font-weight: 800;">Заявки приходят,<br>пока вы <span style="color: #F3C969;">заняты</span></h1>
+      <p style="font-size: 20px; line-height: 1.6; color: #C6DCCD; max-width: 34ch;">Бот встречает клиента, отвечает на вопросы и записывает контакты. Вы собираете его мышкой за десять минут — код и сервер не нужны.</p>
+
+      <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 18px 30px; border-radius: 14px; background: #F3C969; color: #4A3708; font-size: 17px; font-weight: 700;">
+          Собрать бота за 10 минут
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A3708" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+        </div>
+        <div style="padding: 18px 26px; border-radius: 14px; border: 1px solid rgba(255,255,255,.28); color: #FFFFFF; font-size: 16px; font-weight: 600;">Посмотреть пример</div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 22px; font-size: 13.5px; color: #A9C6B5;">
+        <span style="display: flex; align-items: center; gap: 7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7BE0A5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          7 дней бесплатно
+        </span>
+        <span style="display: flex; align-items: center; gap: 7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7BE0A5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          Карта не нужна
+        </span>
+        <span style="display: flex; align-items: center; gap: 7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7BE0A5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          От 350 ₽ в месяц
+        </span>
+      </div>
+    </div>
+
+    <!-- proof: canvas node -> live chat -->
+    <div style="position: relative; display: flex; flex-direction: column; gap: 0;">
+      <div style="width: 330px; border-radius: 18px; background: #FFFFFF; border: 1.5px solid #7BE0A5; box-shadow: 0 26px 60px rgba(0,0,0,.28); overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: #EDF6EF; border-bottom: 1px solid #D6E7D9;">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #0E4A2E;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#17784B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"></path></svg>
+            Сообщение
+          </span>
+          <span style="font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: #6B7C70;">БЛОК СЦЕНАРИЯ</span>
+        </div>
+        <div style="padding: 14px;">
+          <p style="font-size: 14px; line-height: 1.5; color: #0B1A12;">Здравствуйте! Записать вас или показать цены?</p>
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <span style="padding: 7px 12px; border-radius: 9px; background: #F1F6F1; border: 1px solid #DDE7DE; color: #0B1A12; font-size: 12px; font-weight: 600;">Записаться</span>
+            <span style="padding: 7px 12px; border-radius: 9px; background: #F1F6F1; border: 1px solid #DDE7DE; color: #0B1A12; font-size: 12px; font-weight: 600;">Цены</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 16px 0 16px 44px;">
+        <div style="width: 130px; height: 0; border-top: 2px dashed #7BE0A5;"></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7BE0A5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left: -10px;"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+        <span style="font-size: 12.5px; font-weight: 600; color: #A9C6B5;">так это видит клиент</span>
+      </div>
+
+      <div style="align-self: flex-end; width: 340px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 30px 70px rgba(0,0,0,.32); overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 13px 16px; background: #F7F9F7; border-bottom: 1px solid #E3EBE4;">
+          <div style="width: 30px; height: 30px; border-radius: 999px; background: #17784B; display: flex; align-items: center; justify-content: center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"></rect><path d="M12 8V4"></path></svg>
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 13px; font-weight: 700; color: #0B1A12;">Салон «Мята»</span>
+            <span style="font-size: 11px; color: #6B7C70;">онлайн</span>
+          </div>
+        </div>
+        <div style="padding: 16px; background: #EAF2FA; display: flex; flex-direction: column; gap: 9px;">
+          <div style="max-width: 82%; padding: 10px 13px; border-radius: 15px 15px 15px 5px; background: #FFFFFF; color: #0B1A12; font-size: 13.5px; line-height: 1.45;">Здравствуйте! Записать вас или показать цены?</div>
+          <div style="display: flex; gap: 7px;">
+            <span style="flex: 1; text-align: center; padding: 9px 6px; border-radius: 10px; background: #FFFFFF; color: #17784B; font-size: 12.5px; font-weight: 600;">Записаться</span>
+            <span style="flex: 1; text-align: center; padding: 9px 6px; border-radius: 10px; background: #FFFFFF; color: #17784B; font-size: 12.5px; font-weight: 600;">Цены</span>
+          </div>
+          <div style="align-self: flex-end; padding: 10px 13px; border-radius: 15px 15px 5px 15px; background: #C7E7C9; color: #0B1A12; font-size: 13.5px;">Записаться</div>
+          <div style="max-width: 82%; padding: 10px 13px; border-radius: 15px 15px 15px 5px; background: #FFFFFF; color: #0B1A12; font-size: 13.5px; line-height: 1.45;">Как вас зовут?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- proof strip -->
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 0 72px 56px;">
+    <div style="padding: 22px 26px 22px 0; border-right: 1px solid rgba(255,255,255,.14);">
+      <div style="font-family: Unbounded, sans-serif; font-size: 27px; font-weight: 700; color: #FFFFFF;">10 минут</div>
+      <div style="margin-top: 5px; font-size: 13.5px; color: #A9C6B5;">от шаблона до живого бота</div>
+    </div>
+    <div style="padding: 22px 26px; border-right: 1px solid rgba(255,255,255,.14);">
+      <div style="font-family: Unbounded, sans-serif; font-size: 27px; font-weight: 700; color: #FFFFFF;">350 ₽</div>
+      <div style="margin-top: 5px; font-size: 13.5px; color: #A9C6B5;">в месяц, сколько бы ни писали</div>
+    </div>
+    <div style="padding: 22px 26px; border-right: 1px solid rgba(255,255,255,.14);">
+      <div style="font-family: Unbounded, sans-serif; font-size: 27px; font-weight: 700; color: #FFFFFF;">0 строк</div>
+      <div style="margin-top: 5px; font-size: 13.5px; color: #A9C6B5;">кода и настроек сервера</div>
+    </div>
+    <div style="padding: 22px 0 22px 26px;">
+      <div style="font-family: Unbounded, sans-serif; font-size: 27px; font-weight: 700; color: #FFFFFF;">24/7</div>
+      <div style="margin-top: 5px; font-size: 13.5px; color: #A9C6B5;">отвечает ночью и в выходные</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
