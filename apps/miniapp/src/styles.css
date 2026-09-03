@@ -15,7 +15,7 @@ h1,h2,h3,p { margin-top: 0; overflow-wrap: anywhere; }h1 { font-size: 30px; line
 @keyframes pulse { to { opacity: .45; } }@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 
 /* Brand fallback outside Telegram; Telegram theme variables still take priority. */
-.surface-accent { background: var(--tg-theme-button-color,#c4162a); }
-.action,.product-body button,.state-screen button { background: var(--tg-theme-button-color,#c4162a); }
+.surface-accent { background: var(--tg-theme-button-color,#17784b); }
+.action,.product-body button,.state-screen button { background: var(--tg-theme-button-color,#17784b); }
 .style-secondary { background: var(--tg-theme-secondary-bg-color,#f4ecee); }
-.form input:focus,.form select:focus,.form textarea:focus { border-color: var(--tg-theme-button-color,#c4162a); }
+.form input:focus,.form select:focus,.form textarea:focus { border-color: var(--tg-theme-button-color,#17784b); }
