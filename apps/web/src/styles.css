@@ -1418,3 +1418,32 @@ button { color: inherit; }
 .section-heading h2 { overflow-wrap: break-word; }
 @media (max-width: 720px) { .section-heading h2 { font-size: 27px; letter-spacing: -.03em; } .hero h1 { letter-spacing: -.04em; } }
 @media (max-width: 430px) { .section-heading h2 { font-size: 23px; } .hero h1 { font-size: 34px; } }
+
+/* the example plays bigger, and its label sits above the frame instead of on it */
+.hero { grid-template-columns: minmax(0,.9fr) minmax(500px,1.2fr); gap: 48px; }
+.loop-title { display: flex; align-items: center; gap: 12px; font-family: Unbounded, Onest, sans-serif; font-size: clamp(17px, 1.5vw, 22px); font-weight: 700; letter-spacing: .1em; color: #F5F4FF; text-transform: uppercase; }
+.loop-title i { width: 9px; height: 9px; flex: none; border-radius: 999px; background: #34D399; box-shadow: 0 0 12px #34D399; animation: loop-pulse 1.8s ease-in-out infinite; }
+.loop-title em { font-family: Onest, sans-serif; font-size: 13px; font-style: normal; font-weight: 500; letter-spacing: .02em; text-transform: none; color: var(--muted); }
+.loop-steps { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; }
+.loop-steps svg { color: #A78BFA; }
+@media (prefers-reduced-motion: reduce) { .loop-title i { animation: none; } }
+
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; }
+  .build-loop { margin-inline: -6px; }
+}
+@media (max-width: 720px) {
+  /* edge to edge on a phone: the frame is the point of the section */
+  .build-loop { margin-inline: -18px; gap: 10px; }
+  .build-loop video { border-radius: 16px; }
+  .loop-title,.loop-steps { padding-inline: 18px; }
+  .loop-title { font-size: 16px; letter-spacing: .08em; }
+  .loop-glow { inset: -10px 6px 24px; }
+}
+.build-loop .loop-title { color: #F5F4FF; font-size: clamp(17px, 1.5vw, 22px); }
+.build-loop .loop-title em { color: var(--muted); }
+@media (max-width: 720px) {
+  .build-loop { margin-inline: -24px; }
+  .build-loop .loop-title { font-size: 16px; padding-inline: 24px; }
+  .loop-steps { padding-inline: 24px; }
+}

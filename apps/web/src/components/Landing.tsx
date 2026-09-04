@@ -263,7 +263,7 @@ function BuildLoop() {
   }, [reduced]);
 
   return <figure className="build-loop">
-    <span className="loop-badge"><i />ЖИВОЙ ПРИМЕР · 21 СЕКУНДА</span>
+    <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em></figcaption>
     <span className="loop-glow" aria-hidden="true" />
     <video
       ref={video}
@@ -279,7 +279,7 @@ function BuildLoop() {
       <source src="/media/kira-build.webm" type="video/webm" />
       <source src="/media/kira-build.mp4" type="video/mp4" />
     </video>
-    <figcaption><Rocket size={14} /> Собрали сценарий → проверили в чате → добавили Mini App → запустили</figcaption>
+    <p className="loop-steps"><Rocket size={14} /> Собрали сценарий → проверили в чате → добавили Mini App → запустили</p>
   </figure>;
 }
 
