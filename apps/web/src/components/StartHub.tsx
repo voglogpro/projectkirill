@@ -1,5 +1,7 @@
 import { ArrowRight, Bot, Check, Globe, LayoutGrid, MessageSquareText, MousePointerClick, Rocket, Smartphone } from "lucide-react";
+import type { FlowTemplateId } from "../flow-store";
 import type { ProductKit } from "../types";
+import { KindRail } from "./KindRail";
 
 /**
  * The screen behind the door: after registration and after every login the
@@ -29,9 +31,10 @@ const guides = [
   },
 ];
 
-export function StartHub({ projects, onPick, onOpenProject, onSkip }: {
+export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip }: {
   projects: Array<{ id: string; name: string }>;
   onPick: (kit: ProductKit) => void;
+  onTemplate: (template: FlowTemplateId) => void;
   onOpenProject: (id: string) => void;
   onSkip: () => void;
 }) {
@@ -73,6 +76,10 @@ export function StartHub({ projects, onPick, onOpenProject, onSkip }: {
         <div><b>650 ₽ в месяц</b><small>до трёх — бот, Mini App и сайт</small></div>
         <div className="hub-price-note"><Check size={14} />Собрать и проверить — бесплатно и без карты. Платят, только когда продукт идёт к клиентам.</div>
       </div>
+
+      <h2 className="hub-subhead">Что можно собрать</h2>
+      <p className="hub-lead">Листайте вбок — под каждой задачей уже лежит готовый сценарий. Нажмите, и он откроется на холсте.</p>
+      <div className="hub-rail"><KindRail onPick={onTemplate} /></div>
 
       <h2 className="hub-subhead">Как это собирается</h2>
       <div className="guide-grid">
