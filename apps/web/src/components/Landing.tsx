@@ -148,6 +148,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
 function BuildLoop() {
   const video = useRef<HTMLVideoElement>(null);
   const [reduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const tall = useTallFrame();
 
   useEffect(() => {
     const element = video.current;
@@ -164,12 +165,15 @@ function BuildLoop() {
     return () => observer.disconnect();
   }, [reduced]);
 
-  return <figure className="build-loop">
+  return <figure className={`build-loop ${tall ? "tall" : ""}`}>
     <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em></figcaption>
     <span className="loop-glow" aria-hidden="true" />
     <video
+      // A 16:9 frame on a phone is a stamp. The same story is cut 4:5 for
+      // narrow screens, and the key forces a real reload when that flips.
+      key={tall ? "tall" : "wide"}
       ref={video}
-      poster="/media/kira-build-poster.jpg"
+      poster={tall ? "/media/kira-build-tall-poster.jpg" : "/media/kira-build-poster.jpg"}
       muted
       loop
       playsInline
@@ -178,11 +182,24 @@ function BuildLoop() {
       controls={reduced}
       aria-label="Как в KIRA собирается бот и Mini App"
     >
-      <source src="/media/kira-build.webm" type="video/webm" />
-      <source src="/media/kira-build.mp4" type="video/mp4" />
+      <source src={tall ? "/media/kira-build-tall.webm" : "/media/kira-build.webm"} type="video/webm" />
+      <source src={tall ? "/media/kira-build-tall.mp4" : "/media/kira-build.mp4"} type="video/mp4" />
     </video>
     <p className="loop-steps"><Rocket size={14} /> Собрали сценарий → проверили в чате → добавили Mini App → запустили</p>
   </figure>;
+}
+
+/** Below this width the wide cut is unreadable, so the tall one plays instead. */
+function useTallFrame(): boolean {
+  const query = "(max-width: 720px)";
+  const [tall, setTall] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const media = matchMedia(query);
+    const sync = () => setTall(media.matches);
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  return tall;
 }
 
 function Price({ name, price, suffix, description, items, action, featured, onClick }: { name: string; price: string; suffix?: string; description: string; items: string[]; action: string; featured?: boolean; onClick: () => void }) {
