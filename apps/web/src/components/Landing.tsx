@@ -5,7 +5,6 @@ import {
   Check,
   Clock,
   FileText,
-  Globe,
   HelpCircle,
   MessageSquareText,
   Minus,
@@ -15,13 +14,12 @@ import {
   Server,
   ShieldCheck,
   ShoppingBag,
-  Smartphone,
   Sparkles,
   Users,
   Wallet,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FlowTemplateId } from "../flow-store";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
@@ -58,27 +56,22 @@ const steps = [
   {
     title: "Выбираете сценарий",
     text: "Заявки, запись, витрина или ответы на вопросы. Разговор уже написан целиком — с кнопками и вопросами.",
-    caption: "Экран выбора: четыре готовых сценария",
   },
   {
     title: "Видите весь разговор на холсте",
     text: "Каждое сообщение — карточка, каждая кнопка — стрелка к следующей карточке. Видно, куда попадёт клиент после любого нажатия.",
-    caption: "Холст сценария: карточки и связи между ними",
   },
   {
     title: "Меняете тексты под своё дело",
     text: "Кликаете карточку — справа открываются поля: текст сообщения, подписи кнопок, какой ответ спросить. Ничего не сохраняете руками.",
-    caption: "Панель справа: текст сообщения и кнопки",
   },
   {
     title: "Проверяете бота в чате",
     text: "Рядом с холстом чат: жмёте кнопки как клиент и сразу видите, что ответит бот. До запуска, без Telegram.",
-    caption: "Проверка: тот же движок, что и в Telegram",
   },
   {
     title: "Нажимаете «Запустить»",
     text: "Бота создаём мы: токен, кнопка меню, хостинг и HTTPS — внутри тарифа. Через минуту он отвечает вашим клиентам в Telegram.",
-    caption: "Запуск: бот появляется в Telegram",
   },
 ] as const;
 
@@ -127,19 +120,73 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="hero" id="top">
         <div className="hero-copy">
           <div className="eyebrow"><Sparkles size={15} /> КОНСТРУКТОР TELEGRAM-БОТОВ</div>
-          <h1>Бот, который отвечает клиентам.<br /><em>Собрать — десять минут.</em></h1>
-          <p>Возьмите готовый сценарий, поменяйте тексты под своё дело и нажмите «Запустить». Telegram подключаем сами: токен, кнопка меню и хостинг уже внутри.</p>
-
-          <div className="start-cards" role="group" aria-label="С чего начать">
-            <StartCard icon={<MessageSquareText />} title="Только бот" price="350 ₽" text="Отвечает и собирает заявки в чате" action="Собрать бота" onClick={() => onStart({ plan: "solo" })} />
-            <StartCard icon={<Smartphone />} title="Бот + Mini App" price="650 ₽" text="Плюс витрина внутри Telegram" action="Собрать с Mini App" onClick={() => onStart({ plan: "trio" })} />
-            <StartCard best icon={<Globe />} title="Бот + Mini App + сайт" price="650 ₽" text="Три продукта по цене двух" action="Собрать всё" onClick={() => onStart({ plan: "trio" })} />
+          <h1>Бот отвечает.<br /><em>Вы работаете.</em></h1>
+          <p>Соберите разговор мышкой и нажмите «Запустить» — бота, токен и хостинг мы берём на себя.</p>
+          <div className="hero-actions">
+            <button className="primary-button large" onClick={() => onStart()}>Создать бота <ArrowRight size={17} /></button>
+            <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или посмотреть пример</button>
           </div>
-
-          <div className="hero-proof"><span><Check /> Без карты на старте</span><span><Check /> Лимита на подписчиков нет</span><span><Check /> Отменить можно в любой момент</span></div>
         </div>
+        <ol className="hero-marks"><li>01 / собрал</li><li>02 / проверил</li><li className="now">03 / запустил</li></ol>
+      </section>
 
-        <ChatDemo />
+      <section className="bento" aria-label="Что вы получаете">
+        <article className="tile tile-canvas">
+          <header><span>ХОЛСТ СЦЕНАРИЯ</span><em>черновик сохранён</em></header>
+          <div className="mini-flow">
+            <div className="mini-node accent"><i>СООБЩЕНИЕ</i><b>Здравствуйте! Записать вас или показать цены?</b><span><em>Записаться</em><em>Цены</em></span></div>
+            <svg viewBox="0 0 230 34" aria-hidden="true"><path d="M115 0 V12 H30 V34" /><path d="M115 12 H200 V34" /></svg>
+            <div className="mini-pair">
+              <div className="mini-node"><i>ВОПРОС</i><b>Как вас зовут?</b></div>
+              <div className="mini-node"><i>СООБЩЕНИЕ</i><b>Стрижка — от 1 500 ₽</b></div>
+            </div>
+          </div>
+          <footer>6 блоков · 5 связей</footer>
+        </article>
+
+        <article className="tile tile-chat">
+          <header><span>ЧТО ВИДИТ КЛИЕНТ</span></header>
+          <ChatDemo />
+        </article>
+
+        <button className="tile tile-price" onClick={() => onStart({ plan: "solo" })}>
+          <span className="tile-label">ПОДПИСКА</span>
+          <strong>350 ₽</strong>
+          <small>в месяц за бота</small>
+          <span className="tile-go">Собрать бота <ArrowRight size={14} /></span>
+        </button>
+
+        <button className="tile tile-price" onClick={() => onStart({ plan: "trio" })}>
+          <span className="tile-label">ВСЁ СРАЗУ</span>
+          <strong>650 ₽</strong>
+          <small>бот, Mini App и сайт</small>
+          <span className="tile-go">Собрать всё <ArrowRight size={14} /></span>
+        </button>
+
+        <article className="tile tile-leads">
+          <header><span>ЗАЯВКИ В КАБИНЕТЕ</span><em>+3 сегодня</em></header>
+          <ul>
+            <li><b>Анна · стрижка</b><span>+7 900 123-45-67</span></li>
+            <li><b>Игорь · окрашивание</b><span>+7 921 555-10-20</span></li>
+          </ul>
+        </article>
+
+        <article className="tile tile-launch">
+          <div>
+            <span className="tile-label">ЗАПУСК</span>
+            <h3>Токен, меню, хостинг — на нас</h3>
+            <p>Вам остаётся текст. Подписчиков сколько угодно — цена та же.</p>
+          </div>
+          <button className="light-button" onClick={() => onStart()}>Запустить</button>
+        </article>
+
+        <article className="tile tile-turnkey">
+          <div>
+            <span className="tile-label">НЕКОГДА СОБИРАТЬ?</span>
+            <h3>Соберём за вас — от 4 900 ₽</h3>
+          </div>
+          <button className="outline-button" onClick={onService}>Подробнее</button>
+        </article>
       </section>
 
       <section className="service-strip" aria-label="Что входит в платформу">
@@ -255,99 +302,35 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
   </div>;
 }
 
-/** The five screens the owner will actually see, shown instead of described. */
+/** The build, shown rather than described: one camera pass over the console. */
 function HowItWorks({ onStart }: { onStart: () => void }) {
-  const [active, setActive] = useState(0);
-  const step = steps[active] ?? steps[0];
+  const video = useRef<HTMLVideoElement>(null);
+
+  // Autoplay costs nothing until the section is actually on screen.
+  useEffect(() => {
+    const element = video.current;
+    if (element === null) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) void element.play().catch(() => { /* the poster stays, controls remain */ });
+        else element.pause();
+      }
+    }, { threshold: 0.4 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   return <section className="how" id="how">
-    <div className="section-heading"><span>КАК ЭТО РАБОТАЕТ</span><h2>Пять экранов — и бот отвечает клиентам</h2><p>Нажмите шаг слева, чтобы посмотреть, что происходит на экране.</p></div>
-    <div className="how-body">
-      <ol className="how-steps">
-        {steps.map((item, index) => <li key={item.title}>
-          <button className={index === active ? "active" : ""} onClick={() => setActive(index)} aria-current={index === active}>
-            <i>{index + 1}</i>
-            <span><b>{item.title}</b><small>{item.text}</small></span>
-          </button>
-        </li>)}
-      </ol>
-      <div className="how-stage">
-        <div className="how-screen">{[<MockTemplates key="0" />, <MockCanvas key="1" />, <MockInspector key="2" />, <MockChat key="3" />, <MockLaunch key="4" />][active]}</div>
-        <div className="how-caption"><span>{step?.caption}</span><button className="outline-button" onClick={onStart}>Попробовать самому <ArrowRight size={15} /></button></div>
-      </div>
+    <div className="section-heading"><span>КАК ЭТО РАБОТАЕТ</span><h2>От пустого холста до бота в Telegram</h2><p>Двадцать секунд без слов: собрали, проверили, добавили Mini App, запустили.</p></div>
+    <div className="how-player">
+      <video ref={video} src="/media/kira-build.mp4" poster="/media/kira-build-poster.jpg" muted loop playsInline preload="none" controls />
     </div>
+    <ol className="how-rail">
+      {steps.map((step, index) => <li key={step.title}><i>{index + 1}</i><b>{step.title}</b><small>{step.text}</small></li>)}
+    </ol>
+    <div className="how-cta"><button className="primary-button large" onClick={onStart}>Собрать так же <ArrowRight size={17} /></button></div>
   </section>;
-}
-
-function MockTemplates() {
-  const items = [
-    { icon: <FileText />, title: "Сбор заявок", picked: true },
-    { icon: <CalendarDays />, title: "Онлайн-запись" },
-    { icon: <ShoppingBag />, title: "Витрина и цены" },
-    { icon: <HelpCircle />, title: "Вопросы и ответы" },
-  ];
-  return <div className="mock mock-templates">
-    <b>С чего начнём?</b>
-    <div>{items.map((item) => <span key={item.title} className={item.picked ? "picked" : ""}>{item.icon}<em>{item.title}</em>{item.picked && <Check />}</span>)}</div>
-    <button className="mock-primary">Дальше</button>
-  </div>;
-}
-
-function MockCanvas() {
-  return <div className="mock mock-canvas">
-    <aside><em>Блоки</em><span>Сообщение</span><span>Вопрос</span><span>Условие</span><span>Оператор</span></aside>
-    <div className="mock-board">
-      <div className="mock-node start"><i>Команда</i><b>/start</b></div>
-      <svg className="mock-wire" viewBox="0 0 20 34" aria-hidden="true"><path d="M10 0 V34" /></svg>
-      <div className="mock-node"><i>Сообщение</i><b>Здравствуйте! Записать вас или показать цены?</b><span><em>Записаться</em><em>Цены</em></span></div>
-      <div className="mock-fork" aria-hidden="true"><svg viewBox="0 0 200 30"><path d="M100 0 V12 H24 V30" /><path d="M100 12 H176 V30" /></svg></div>
-      <div className="mock-pair">
-        <div className="mock-node small"><i>Вопрос</i><b>Как вас зовут?</b></div>
-        <div className="mock-node small"><i>Сообщение</i><b>Стрижка — от 1 500 ₽</b></div>
-      </div>
-    </div>
-  </div>;
-}
-
-function MockInspector() {
-  return <div className="mock mock-inspector">
-    <div className="mock-node selected"><i>Сообщение</i><b>Здравствуйте! Записать вас или показать цены?</b><span><em>Записаться</em><em>Цены</em></span></div>
-    <aside>
-      <em>Свойства блока</em>
-      <label>Текст сообщения<span>Здравствуйте! Записать вас или показать цены?</span></label>
-      <label>Кнопка 1<span>Записаться</span></label>
-      <label>Кнопка 2<span>Цены</span></label>
-      <small><Check /> Сохраняется само</small>
-    </aside>
-  </div>;
-}
-
-function MockChat() {
-  return <div className="mock mock-chat">
-    <header><span className="avatar"><Bot size={15} /></span><b>Проверка сценария</b></header>
-    <div>
-      <p className="bot">Здравствуйте! Записать вас или показать цены?</p>
-      <span className="keys"><em>Записаться</em><em>Цены</em></span>
-      <p className="user">Записаться</p>
-      <p className="bot">Как вас зовут?</p>
-      <p className="user">Анна</p>
-      <p className="bot">Записали, Анна! Перезвоним и подтвердим.</p>
-    </div>
-    <footer>Тот же движок, что и в Telegram</footer>
-  </div>;
-}
-
-function MockLaunch() {
-  return <div className="mock mock-launch">
-    <span className="mock-rocket"><Rocket /></span>
-    <b>Бот запущен</b>
-    <ul>
-      <li><Check /> Токен зашифрован и сохранён</li>
-      <li><Check /> Кнопка меню в Telegram настроена</li>
-      <li><Check /> Хостинг и HTTPS подключены</li>
-    </ul>
-    <div className="mock-bot">@vash_salon_bot<em>отвечает</em></div>
-  </div>;
 }
 
 /** The first three lines are there on load; the rest arrive so the chat feels live. */
@@ -374,17 +357,6 @@ function ChatDemo() {
     </div>
     <footer>Так выглядит бот, собранный на KIRA</footer>
   </div>;
-}
-
-function StartCard({ icon, title, price, text, action, best, onClick }: { icon: React.ReactNode; title: string; price: string; text: string; action: string; best?: boolean; onClick: () => void }) {
-  return <button className={`start-card ${best ? "best" : ""}`} onClick={onClick}>
-    {best && <em className="tag">Выгодно</em>}
-    <span className="start-icon">{icon}</span>
-    <b>{title}</b>
-    <strong>{price}<small>/ мес</small></strong>
-    <p>{text}</p>
-    <span className="start-action">{action} <ArrowRight size={15} /></span>
-  </button>;
 }
 
 function Template({ icon, title, text, onClick }: { icon: React.ReactNode; title: string; text: string; onClick: () => void }) {
