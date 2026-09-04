@@ -3,22 +3,22 @@ import { createRemoteProject, ensureRemoteProject, getEntitlement, hasSession, l
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
-import { Guide } from "./components/Guide";
 import { Landing } from "./components/Landing";
 import { LaunchModal } from "./components/LaunchModal";
 import { LegalPage } from "./components/LegalPage";
 import { Onboarding } from "./components/Onboarding";
 import { Service } from "./components/Service";
 import { PreviewModal } from "./components/PreviewModal";
+import { StartHub } from "./components/StartHub";
 import { FlowEditor } from "./components/FlowEditor";
 import { createFlowFromTemplate, loadFlow, pageTemplateForFlow, saveFlow, type FlowTemplateId } from "./flow-store";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
-import type { ProjectState } from "./types";
+import type { ProductKit, ProjectState } from "./types";
 
-type Screen = "landing" | "guide" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
-type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
-const routeFor: Record<Screen, string> = { landing: "/", guide: "/guide", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
-function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : path.startsWith("/guide") ? "guide" : "landing"; }
+type Screen = "landing" | "hub" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
+type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio"; kit?: ProductKit };
+const routeFor: Record<Screen, string> = { landing: "/", hub: "/hub", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
+function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : path.startsWith("/hub") || path.startsWith("/guide") ? "hub" : "landing"; }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => screenFromPath(location.pathname));
@@ -30,12 +30,16 @@ export function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resumeLaunch, setResumeLaunch] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [toast, setToast] = useState<string>();
 
   const navigate = useCallback((next: Screen, replace = false) => { setScreen(next); history[replace ? "replaceState" : "pushState"]({}, "", routeFor[next]); }, []);
   useEffect(() => { const pop = () => setScreen(screenFromPath(location.pathname)); addEventListener("popstate", pop); return () => removeEventListener("popstate", pop); }, []);
   useEffect(() => { if (!location.pathname.startsWith("/billing/return")) return; setToast("Возвращаемся в мастер и проверяем оплату…"); try { const channel = new BroadcastChannel("tma-studio-payment"); channel.postMessage({ type: "payment-return" }); channel.close(); } catch { /* The launch modal still has a manual status check. */ } }, []);
   useEffect(() => { if ((screen !== "dashboard" && screen !== "builder") || !hasSession()) return; let active = true; void loadRemoteProject(project.id).catch(() => ensureRemoteProject(project)).then((remote) => { if (active) updateProject(remote); }).catch((reason) => { if (active) setToast(messageFrom(reason, "Не удалось восстановить проект")); }); return () => { active = false; }; }, []); // restore the cloud draft after a direct URL reload
+  // The hub can be opened directly (reload, «Помощь», a bookmark), so it loads
+  // the project list itself instead of relying on the login that filled it.
+  useEffect(() => { if (screen !== "hub" || !hasSession()) return; let active = true; void listRemoteProjects().then((items) => { if (active) setProjects(items.map((item) => ({ id: item.id, name: item.name }))); }).catch(() => undefined); return () => { active = false; }; }, [screen]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(undefined), 4000); return () => clearTimeout(timer); }, [toast]);
 
   const updateProject = useCallback((next: ProjectState) => { setProject(next); saveProject(next); }, []);
@@ -44,28 +48,50 @@ export function App() {
     setIntent(nextIntent);
     if (!hasSession()) { setAuthOpen(true); return; }
     if (nextIntent.templateId) { navigate("onboarding"); return; }
-    await openWorkspace();
+    navigate("hub");
   }
 
   async function openWorkspace() {
+    if (!hasSession()) { navigate("dashboard"); return; }
     setBusy(true);
     try { const remote = await ensureRemoteProject(project); updateProject(remote); navigate("dashboard"); }
     catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); }
     finally { setBusy(false); }
   }
 
-  async function afterAuth(mode: "register" | "login" = "login") {
+  // Every way in — a fresh account or a returning login — passes through the
+  // start screen: first say what you are building, then land in a tool.
+  async function afterAuth(_mode: "register" | "login" = "login") {
     setAuthOpen(false);
-    // A brand-new account gets the instruction page before anything else.
-    if (mode === "register" && !resumeLaunch) { navigate("guide"); return; }
     setBusy(true);
     try {
-      const projects = await listRemoteProjects();
-      if (resumeLaunch) { const remote = projects.some((item) => item.id === project.id) ? await saveRemoteProject(project) : await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); }
-      else if (intent.templateId) navigate("onboarding");
-      else if (projects.length === 0) navigate("onboarding");
-      else { const remote = await loadRemoteProject(projects[0]!.id); updateProject(remote); navigate("dashboard"); }
+      const remoteProjects = await listRemoteProjects();
+      setProjects(remoteProjects.map((item) => ({ id: item.id, name: item.name })));
+      if (resumeLaunch) { const remote = remoteProjects.some((item) => item.id === project.id) ? await saveRemoteProject(project) : await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); return; }
+      if (intent.templateId) { navigate("onboarding"); return; }
+      navigate("hub");
     } catch (reason) { setToast(messageFrom(reason, "Не удалось загрузить кабинет")); }
+    finally { setBusy(false); }
+  }
+
+  async function pickKit(kit: ProductKit) {
+    setIntent((current) => ({ ...current, kit }));
+    // A site has no conversation to design, so it opens the page builder directly.
+    if (kit !== "site") { navigate("onboarding"); return; }
+    setBusy(true);
+    const local = { ...createProjectFromTemplate("services", "Мой сайт"), kit };
+    try {
+      const next = hasSession() ? { ...await createRemoteProject(local), kit } : local;
+      updateProject(next); navigate("builder");
+      setToast("Собирайте страницу блоками — она же станет сайтом по ссылке");
+    } catch (reason) { setToast(messageFrom(reason, "Не удалось создать проект")); }
+    finally { setBusy(false); }
+  }
+
+  async function openProject(id: string) {
+    setBusy(true);
+    try { updateProject(await loadRemoteProject(id)); navigate("dashboard"); }
+    catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); }
     finally { setBusy(false); }
   }
 
@@ -83,7 +109,7 @@ export function App() {
         const seeded = await loadRemoteFlow(next.id);
         await saveRemoteFlow(next.id, scenario, seeded.revision);
       }
-      updateProject(next); setFlow(scenario); saveFlow(scenario);
+      updateProject({ ...next, kit: intent.kit ?? "bot" }); setFlow(scenario); saveFlow(scenario);
       navigate("flow"); setToast("Бот собран — поменяйте тексты и проверьте его в чате");
     } catch (reason) { setToast(messageFrom(reason, "Не удалось создать бота")); }
     finally { setBusy(false); }
@@ -114,9 +140,9 @@ export function App() {
     {screen === "landing" && <Landing onStart={(value) => void start(value)} onService={() => navigate("service")} />}
     {screen === "service" && <Service onStart={() => void start()} onHome={() => navigate("landing")} />}
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
-    {screen === "guide" && <Guide onStart={() => navigate("onboarding")} onSkip={() => void openWorkspace()} />}
+    {screen === "hub" && <StartHub projects={projects} onPick={(kit) => void pickKit(kit)} onOpenProject={(id) => void openProject(id)} onSkip={() => void openWorkspace()} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("landing")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
-    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onGuide={() => navigate("guide")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("hub")} onGuide={() => navigate("hub")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
     {screen === "flow" && <FlowEditor flow={flow} projectId={project.id} onChange={(next) => { setFlow(next); saveFlow(next); }} onBack={() => navigate("dashboard")} onLaunch={() => void launch()} onMessage={setToast} />}
     {screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => setAuthOpen(false)} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); navigate("onboarding"); }} />}

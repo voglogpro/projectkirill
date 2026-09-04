@@ -1,10 +1,11 @@
-import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
+import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ArrowLeft, Clock, GitBranch, Hand, MessageSquareText, Play, Plus, Rocket, SlidersHorizontal, Trash2, UserRound, X } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock, GitBranch, MessageSquareText, MousePointerClick, Play, Plus, Rocket, SlidersHorizontal, Trash2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
 import { hasSession, loadRemoteFlow, publishRemoteFlow, saveRemoteFlow } from "../api";
 import { createFlowNode, exitsOf, nodeCatalog, saveFlow, type FlowNodeType } from "../flow-store";
+import { useCompact } from "../use-compact";
 import { FlowSimulator } from "./FlowSimulator";
 
 type CanvasData = { node: FlowNode; onChange: (node: FlowNode) => void };
@@ -18,7 +19,8 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   const [selectedId, setSelectedId] = useState<string | undefined>(flow.nodes[1]?.id ?? flow.nodes[0]?.id);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const compact = useCompact();
-  const [sheet, setSheet] = useState<"none" | "palette" | "inspector">("none");
+  const [sheet, setSheet] = useState<"none" | "inspector">("none");
+  const canvas = useRef<ReactFlowInstance<CanvasNode, Edge>>(undefined);
   const [revision, setRevision] = useState<number>();
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const skipNextSave = useRef(true);
@@ -116,10 +118,25 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   }
 
   function addNode(type: FlowNodeType) {
+    // A new step lands under the one you are looking at, and the camera follows
+    // it — on a phone anything placed off-screen may as well not exist.
     const spread = flow.nodes.length * 24;
-    const node = createFlowNode(type, { x: 420 + (spread % 120), y: 120 + spread });
+    const anchor = selected?.position;
+    const position = anchor === undefined
+      ? { x: 420 + (spread % 120), y: 120 + spread }
+      : { x: anchor.x, y: anchor.y + 200 + (flow.nodes.some((node) => node.position.x === anchor.x && node.position.y === anchor.y + 200) ? 40 : 0) };
+    const node = createFlowNode(type, position);
     commit({ ...flow, nodes: [...flow.nodes, node] });
     setSelectedId(node.id);
+    requestAnimationFrame(() => canvas.current?.setCenter(position.x + 116, position.y + 90, { zoom: canvas.current.getZoom(), duration: 320 }));
+    if (compact) setSheet("inspector");
+  }
+
+  /** Buttons live inside a message, so the dock adds one to the selected step. */
+  function addButton() {
+    if (selected?.type !== "message") { onMessage("Сначала выберите сообщение — кнопки живут в нём"); return; }
+    updateNode({ ...selected, props: { ...selected.props, buttons: [...selected.props.buttons, { id: `b${crypto.randomUUID().slice(0, 4)}`, kind: "next", label: "Кнопка" }] } });
+    if (compact) setSheet("inspector");
   }
 
   function removeSelected() {
@@ -129,6 +146,15 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     setSelectedId(undefined);
   }
 
+  const dock = [
+    { label: "Сообщение", icon: MessageSquareText, run: () => addNode("message") },
+    { label: "Кнопка", icon: MousePointerClick, run: addButton },
+    { label: "Вопрос", icon: CircleHelp, run: () => addNode("question") },
+    { label: "Развилка", icon: GitBranch, run: () => addNode("choice") },
+    { label: "Пауза", icon: Clock, run: () => addNode("delay") },
+    { label: "Оператор", icon: UserRound, run: () => addNode("handoff") },
+  ];
+
   return <div className={`flow-screen ${compact ? "compact" : ""}`}>
     <header className="builder-top">
       <div>
@@ -137,18 +163,17 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
       </div>
       <div />
       <div>
-        <button className="outline-button" onClick={() => setSimulatorOpen(true)}><Play />Проверить в чате</button>
-        <button className="primary-button" disabled={saveState === "saving"} onClick={() => void launch()}><Rocket />Запустить</button>
+        <button className="outline-button" onClick={() => setSimulatorOpen(true)} aria-label="Проверить в чате"><Play /><span>Проверить в чате</span></button>
+        <button className="primary-button" disabled={saveState === "saving"} onClick={() => void launch()}><Rocket /><span>Запустить</span></button>
       </div>
     </header>
 
     <div className="flow-body">
-      <aside className={`flow-palette ${compact && sheet === "palette" ? "open" : ""}`}>
-        {compact && <div className="sheet-top"><b>Шаги сценария</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>}
+      <aside className="flow-palette">
         <span className="label">ШАГИ СЦЕНАРИЯ</span>
         {nodeCatalog.map(({ type, title, hint }) => {
           const Icon = icons[type];
-          return <button key={type} onClick={() => { addNode(type); if (compact) setSheet("inspector"); }}><span className="pal-icon"><Icon /></span><span className="pal-text"><b>{title}</b><small>{hint}</small></span><Plus /></button>;
+          return <button key={type} onClick={() => addNode(type)}><span className="pal-icon"><Icon /></span><span className="pal-text"><b>{title}</b><small>{hint}</small></span><Plus /></button>;
         })}
         <p className="flow-tip">Соедините точку справа от шага со следующим шагом. У сообщения с кнопками своя точка на каждую кнопку.</p>
       </aside>
@@ -161,6 +186,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onInit={(instance) => { canvas.current = instance; }}
           onNodeClick={(_event, node) => { setSelectedId(node.id); if (compact) setSheet("inspector"); }}
           onPaneClick={() => { setSelectedId(undefined); if (compact) setSheet("none"); }}
           fitView
@@ -174,6 +200,8 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           zoomOnPinch
           panOnDrag
           zoomOnDoubleClick={!compact}
+          // Fingers are blunt: a wider catch radius makes wiring two steps together possible at all.
+          connectionRadius={compact ? 44 : 20}
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2A2A44" />
           <Controls showInteractive={false} position={compact ? "top-right" : "bottom-left"} />
@@ -194,27 +222,17 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
       </aside>
     </div>
 
-    {compact && <nav className="flow-tabs" aria-label="Разделы редактора">
-      <button className={sheet === "none" ? "on" : ""} onClick={() => setSheet("none")}><Hand />Холст</button>
-      <button className={sheet === "palette" ? "on" : ""} onClick={() => setSheet("palette")}><Plus />Шаги</button>
-      <button className={sheet === "inspector" ? "on" : ""} onClick={() => setSheet("inspector")}><SlidersHorizontal />Настройки</button>
+    {compact && <nav className="flow-dock" aria-label="Что добавить">
+      <div className="dock-add">
+        {dock.map(({ label, icon: Icon, run }) => <button key={label} onClick={run}><span><Icon /></span>{label}</button>)}
+      </div>
+      <button className={`dock-settings ${sheet === "inspector" ? "on" : ""}`} onClick={() => setSheet(sheet === "inspector" ? "none" : "inspector")}>
+        <SlidersHorizontal />{sheet === "inspector" ? "Свернуть" : "Настройки"}
+      </button>
     </nav>}
 
     {simulatorOpen && <FlowSimulator flow={flow} onClose={() => setSimulatorOpen(false)} />}
   </div>;
-}
-
-/** A phone gets sheets and a tab bar instead of three columns side by side. */
-function useCompact(): boolean {
-  const query = "(max-width: 860px)";
-  const [compact, setCompact] = useState(() => matchMedia(query).matches);
-  useEffect(() => {
-    const media = matchMedia(query);
-    const sync = () => setCompact(media.matches);
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-  return compact;
 }
 
 function toCanvasNodes(flow: BotFlowDocument, selectedId: string | undefined, onChange: (node: FlowNode) => void): CanvasNode[] {

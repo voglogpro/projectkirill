@@ -1,5 +1,7 @@
 export type BlockType = "heading" | "text" | "button" | "product" | "form" | "media";
 export type TemplateId = "catalog" | "booking" | "leads" | "services" | "blank";
+/** What the owner set out to build: the choice made on the start screen. */
+export type ProductKit = "bot" | "bot-app" | "bot-app-site" | "site";
 export type BuilderTab = "blocks" | "pages" | "sections";
 export type DashboardSection = "overview" | "flow" | "bot" | "leads" | "design" | "settings" | "help";
 export type BotConnectionStatus = "configuring" | "active" | "error" | "revoked";
@@ -42,6 +44,7 @@ export interface ProjectState {
   botStatus?: BotConnectionStatus;
   plan: "free" | "solo" | "trio";
   templateId?: TemplateId;
+  kit?: ProductKit;
   updatedAt?: string;
   previewed?: boolean;
   hasPendingChanges?: boolean;

@@ -10,6 +10,13 @@ const nav: Array<{ id: DashboardSection; label: string; icon: typeof LayoutDashb
   { id: "overview", label: "Главная", icon: LayoutDashboard }, { id: "flow", label: "Сценарий", icon: GitBranch }, { id: "bot", label: "Бот", icon: MessageSquare }, { id: "leads", label: "Заявки", icon: Users }, { id: "design", label: "Mini App", icon: Smartphone }, { id: "settings", label: "Настройки", icon: Settings }, { id: "help", label: "Помощь", icon: HelpCircle },
 ];
 
+/** The kit chosen on the start screen decides which sections exist at all. */
+function sectionsFor(kit: ProjectState["kit"]): typeof nav {
+  if (kit === "site") return nav.filter((item) => item.id !== "flow" && item.id !== "bot" && item.id !== "design");
+  if (kit === "bot") return nav.filter((item) => item.id !== "design");
+  return nav;
+}
+
 /** The published page document is also served as a public site. */
 function siteUrlOf(miniAppUrl: string): string { return miniAppUrl.replace("/app/", "/s/"); }
 
@@ -49,7 +56,7 @@ export function Dashboard(props: Props) {
   return <div className="workspace"><aside className="app-sidebar">
     <button className="brand bare" onClick={onHome}><span className="brand-mark"><Bot size={19} /></span>KIRA</button>
     <div className="project-picker"><select name="desktop-project" value={project.id} aria-label="Текущий проект" onChange={(event) => void onOpenProject(event.target.value)}>{projects.length === 0 && <option value={project.id}>{project.name}</option>}{projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button onClick={onNewProject} aria-label="Создать проект"><Plus /></button></div>
-    <nav>{nav.map(({ id, label, icon: Icon }) => <button key={id} className={section === id ? "active" : ""} onClick={() => openSection(id)}><Icon />{label}</button>)}</nav>
+    <nav>{sectionsFor(project.kit).map(({ id, label, icon: Icon }) => <button key={id} className={section === id ? "active" : ""} onClick={() => openSection(id)}><Icon />{label}</button>)}</nav>
     <div className="sidebar-plan"><span>{project.plan === "free" ? "Бесплатный конструктор" : project.plan === "solo" ? "Тариф: Один бот" : "Тариф: Три бота"}</span><small>{project.plan === "free" ? `${projects.length || 1} ${projects.length === 1 ? "проект" : "проекта"}` : `Активные боты: ${activeBots} из ${project.plan === "trio" ? 3 : 1}`}</small><button onClick={primaryAction}>{connectionNeedsAttention ? "Переподключить бота" : isLive ? hasPendingChanges ? "Опубликовать изменения" : "Открыть preview" : project.status === "active" ? "Продлить доступ" : "Запустить от 350 ₽"}</button></div>
     <button className="profile" onClick={() => setProfileOpen((value) => !value)}><span>{user?.displayName?.slice(0, 1).toUpperCase() ?? "Д"}</span><div><b>{user?.displayName ?? "Демо"}</b><small>{user?.email ?? "данные на этом устройстве"}</small></div><ChevronRight /></button>
     {profileOpen && <div className="profile-menu"><button onClick={() => { logout(); onHome(); }}><LogOut />Выйти</button></div>}
