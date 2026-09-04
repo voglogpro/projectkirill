@@ -5,11 +5,13 @@ import {
   ChevronRight,
   CalendarDays,
   Check,
+  Globe,
   GraduationCap,
   Lock,
   MessageSquareText,
   Rocket,
   ShoppingBag,
+  Smartphone,
   Sparkles,
   Users,
   Wrench,
@@ -37,6 +39,16 @@ const kinds: Kind[] = [
   { id: "club", icon: Lock, title: "Закрытый клуб", text: "Заявки в канал, анкета на входе и доступ только своим.", problem: "В канал лезут случайные люди, а проверять некому", demo: ["Пара вопросов — и мы вас впустим", "Готов ответить"], ready: false, template: "blank" },
 ];
 
+/**
+ * Three products, one cabinet — the part people miss on the first read, so it
+ * gets its own section right under the hero.
+ */
+const pieces = [
+  { icon: MessageSquareText, tag: "ОСНОВА", title: "Текстовый бот", text: "Разговор в Telegram: сообщения, кнопки, вопросы, развилки. С него начинают все — этого одного уже хватает, чтобы принимать заявки.", note: "Входит в оба тарифа" },
+  { icon: Smartphone, tag: "ЭКРАНЫ", title: "Mini App", text: "Приложение внутри Telegram: каталог, карточки, форма, оплата. Бот открывает его кнопкой — выходить из мессенджера не нужно.", note: "Собирается блоками, как страница" },
+  { icon: Globe, tag: "ССЫЛКА", title: "Сайт", text: "Те же экраны по обычной ссылке — для тех, кто не в Telegram. Отдельно верстать ничего не надо: контент один и тот же.", note: "Готов сразу после публикации" },
+];
+
 const steps = [
   { title: "Собираете разговор", text: "Карточка-сообщение, кнопки, вопрос, развилка. Мышкой, без кода." },
   { title: "Проверяете в чате", text: "Тот же движок, что в Telegram: жмёте кнопки как клиент." },
@@ -59,8 +71,8 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     <header className="landing-nav">
       <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
       <nav aria-label="Навигация по странице">
+        <a href="#pieces">Что входит</a>
         <a href="#kinds">Что можно собрать</a>
-        <a href="#how">Как это работает</a>
         <a href="#pricing">Тарифы</a>
         <a href="#faq">Вопросы</a>
         <button className="nav-service" onClick={onService}><Wrench size={15} /> Бот под ключ</button>
@@ -74,9 +86,9 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     <main>
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><Sparkles size={15} /> КОНСТРУКТОР TELEGRAM-БОТОВ</div>
-          <h1>Любой бот<br /><em>за десять минут</em></h1>
-          <p>Заявки, запись, магазин, обучение, закрытый клуб, поддержка — что угодно. Собираете разговор мышкой, а бота, токен и хостинг берём мы.</p>
+          <div className="eyebrow"><Sparkles size={15} /> БОТ · MINI APP · САЙТ В ОДНОМ КАБИНЕТЕ</div>
+          <h1>Соберите бота,<br /><em>который нужен вам</em></h1>
+          <p>Заявки, запись, магазин, обучение, поддержка. Разговор собираете мышкой, а бота, токен и хостинг берём мы. Рядом — Mini App и сайт на том же контенте.</p>
           <div className="hero-actions">
             <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
             <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
@@ -89,6 +101,20 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
           </ul>
         </div>
         <BuildLoop />
+      </section>
+
+      <section className="pieces" id="pieces">
+        <div className="section-heading"><span>ЧТО ВХОДИТ</span><h2>Три части, и все работают как одно</h2><p>Начните с текстового бота. Mini App и сайт добавляются позже, в том же кабинете — переносить ничего не придётся.</p></div>
+        <ol className="piece-grid">
+          {pieces.map(({ icon: Icon, tag, title, text, note }, index) => <li key={title} className={`piece piece-${index + 1}`}>
+            <span className="piece-icon"><Icon /></span>
+            <span className="piece-tag">{tag}</span>
+            <b>{title}</b>
+            <p>{text}</p>
+            <small><Check size={13} />{note}</small>
+          </li>)}
+        </ol>
+        <p className="piece-link"><Rocket size={15} /> Связаны между собой: бот открывает Mini App кнопкой меню, а сайт — те же экраны по ссылке. Поменяли текст в кабинете — поменялось везде.</p>
       </section>
 
       <section className="kinds" id="kinds">
@@ -143,7 +169,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     <footer>
       <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
       <div className="footer-links">
-        <a href="#kinds">Что можно собрать</a><a href="#pricing">Тарифы</a>
+        <a href="#pieces">Что входит</a><a href="#kinds">Что можно собрать</a><a href="#pricing">Тарифы</a>
         <button onClick={onService}>Бот под ключ</button>
         <a href="mailto:support@tmastudio.ru">Поддержка</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a>
       </div>

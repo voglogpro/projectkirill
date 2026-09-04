@@ -2,7 +2,7 @@ import { Bot, ChevronRight, Eye, EyeOff, Lock, Sparkles, X } from "lucide-react"
 import { useEffect, useState } from "react";
 import { loginAccount, registerAccount } from "../api";
 
-export function AuthModal({ initialMode = "register", onClose, onAuthenticated, onDemo }: { initialMode?: "register" | "login"; onClose: () => void; onAuthenticated: () => Promise<void>; onDemo: () => void }) {
+export function AuthModal({ initialMode = "register", onClose, onAuthenticated, onDemo }: { initialMode?: "register" | "login"; onClose: () => void; onAuthenticated: (mode: "register" | "login") => Promise<void>; onDemo: () => void }) {
   const [mode, setMode] = useState<"register" | "login">(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +32,7 @@ export function AuthModal({ initialMode = "register", onClose, onAuthenticated, 
     try {
       if (mode === "register") await registerAccount({ displayName: name, email, password });
       else await loginAccount({ email, password });
-      await onAuthenticated();
+      await onAuthenticated(mode);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Не удалось войти");
     } finally {
@@ -61,7 +61,7 @@ export function AuthModal({ initialMode = "register", onClose, onAuthenticated, 
       <div className="auth-fields">
         {mode === "register" && <label><span>Ваше имя</span><input autoFocus required name="name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} /></label>}
         <label><span>Email</span><input autoFocus={mode === "login"} required name="email" autoComplete="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label>
-        <label><span>Пароль</span><div className="password-control"><input required name="password" autoComplete={mode === "register" ? "new-password" : "current-password"} minLength={12} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Минимум 12 символов" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff /> : <Eye />}</button></div><small><Lock />Мы не храним пароль в открытом виде</small></label>
+        <label><span>Пароль</span><div className="password-control"><input required name="password" autoComplete={mode === "register" ? "new-password" : "current-password"} minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Минимум 8 символов" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}>{showPassword ? <EyeOff /> : <Eye />}</button></div><small><Lock />Мы не храним пароль в открытом виде</small></label>
       </div>
       {mode === "register" && <label className="legal-check"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>Я принимаю <a href="/terms" target="_blank">условия сервиса</a> и <a href="/privacy" target="_blank">политику конфиденциальности</a></span></label>}
       {error && <div className="auth-error" role="alert">{error}</div>}

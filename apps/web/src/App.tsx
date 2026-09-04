@@ -3,6 +3,7 @@ import { createRemoteProject, ensureRemoteProject, getEntitlement, hasSession, l
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
+import { Guide } from "./components/Guide";
 import { Landing } from "./components/Landing";
 import { LaunchModal } from "./components/LaunchModal";
 import { LegalPage } from "./components/LegalPage";
@@ -14,10 +15,10 @@ import { createFlowFromTemplate, loadFlow, pageTemplateForFlow, saveFlow, type F
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
 import type { ProjectState } from "./types";
 
-type Screen = "landing" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
+type Screen = "landing" | "guide" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
-const routeFor: Record<Screen, string> = { landing: "/", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
-function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : "landing"; }
+const routeFor: Record<Screen, string> = { landing: "/", guide: "/guide", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
+function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : path.startsWith("/guide") ? "guide" : "landing"; }
 
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => screenFromPath(location.pathname));
@@ -53,8 +54,11 @@ export function App() {
     finally { setBusy(false); }
   }
 
-  async function afterAuth() {
-    setAuthOpen(false); setBusy(true);
+  async function afterAuth(mode: "register" | "login" = "login") {
+    setAuthOpen(false);
+    // A brand-new account gets the instruction page before anything else.
+    if (mode === "register" && !resumeLaunch) { navigate("guide"); return; }
+    setBusy(true);
     try {
       const projects = await listRemoteProjects();
       if (resumeLaunch) { const remote = projects.some((item) => item.id === project.id) ? await saveRemoteProject(project) : await createRemoteProject(project); updateProject(remote); setResumeLaunch(false); setLaunchOpen(true); navigate("builder"); }
@@ -110,8 +114,9 @@ export function App() {
     {screen === "landing" && <Landing onStart={(value) => void start(value)} onService={() => navigate("service")} />}
     {screen === "service" && <Service onStart={() => void start()} onHome={() => navigate("landing")} />}
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
+    {screen === "guide" && <Guide onStart={() => navigate("onboarding")} onSkip={() => void openWorkspace()} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("landing")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
-    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("onboarding")} onGuide={() => navigate("guide")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
     {screen === "flow" && <FlowEditor flow={flow} projectId={project.id} onChange={(next) => { setFlow(next); saveFlow(next); }} onBack={() => navigate("dashboard")} onLaunch={() => void launch()} onMessage={setToast} />}
     {screen === "builder" && <Builder initialProject={project} onChange={updateProject} onBack={() => navigate("dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => setAuthOpen(false)} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); navigate("onboarding"); }} />}

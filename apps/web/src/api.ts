@@ -118,7 +118,31 @@ async function request<T = unknown>(path: string, init: RequestInit = {}, authen
   catch (error) { throw new Error(error instanceof DOMException && error.name === "TimeoutError" ? "Сервер не ответил вовремя. Попробуйте ещё раз." : "Нет соединения с сервером."); }
   if (response.status === 401 && authenticated && retry && session && await refreshSession(session)) return request<T>(path, init, true, false);
   if (response.status === 204) return undefined as T;
-  const body = await response.json().catch(() => ({})) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(body.error?.message ?? "Сервис временно недоступен");
+  const body = await response.json().catch(() => ({})) as T & { error?: { code?: string; message?: string; details?: { path?: (string | number)[] }[] } };
+  if (!response.ok) throw new Error(humanError(response.status, body.error));
   return body;
+}
+
+// Сервер говорит кодами и по-английски. Пользователю нужна одна короткая русская фраза.
+function humanError(status: number, error?: { code?: string; message?: string; details?: { path?: (string | number)[] }[] }): string {
+  if (status === 429) return "Слишком много попыток. Подождите минуту и попробуйте снова.";
+  if (status >= 500) return "Сервис временно недоступен. Попробуйте ещё раз через минуту.";
+  switch (error?.code) {
+    case "CONFLICT": return "Эта почта уже используется. Войдите в аккаунт.";
+    case "AUTHENTICATION_FAILED": return "Неверная почта или пароль.";
+    case "REFRESH_TOKEN_REUSE": return "Сессия истекла. Войдите заново.";
+    case "INVALID_BOT_TOKEN": return "Telegram не принял токен. Проверьте, что скопировали его целиком.";
+    case "TELEGRAM_UPSTREAM_ERROR": return "Telegram сейчас не отвечает. Попробуйте ещё раз через минуту.";
+    case "NOT_FOUND": return "Не нашли то, что вы открыли. Обновите страницу.";
+    case "VALIDATION_ERROR": return validationError(error.details);
+    default: return status === 401 ? "Сессия истекла. Войдите заново." : "Что-то пошло не так. Попробуйте ещё раз.";
+  }
+}
+
+function validationError(details?: { path?: (string | number)[] }[]): string {
+  const fields = new Set((details ?? []).map((issue) => String(issue.path?.[0] ?? "")));
+  if (fields.has("password")) return "Пароль должен быть не короче 8 символов.";
+  if (fields.has("email")) return "Проверьте адрес почты — похоже, в нём опечатка.";
+  if (fields.has("displayName")) return "Напишите, как к вам обращаться.";
+  return "Проверьте заполненные поля.";
 }

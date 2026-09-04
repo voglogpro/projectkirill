@@ -8,7 +8,7 @@ const registerSchema = z
   .object({
     email: z.email().trim().toLowerCase().max(320),
     displayName: z.string().trim().min(1).max(120),
-    password: z.string().min(12).max(256),
+    password: z.string().min(8).max(256),
   })
   .strict();
 

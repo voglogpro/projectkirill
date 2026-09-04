@@ -1,6 +1,6 @@
 import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ArrowLeft, Clock, GitBranch, MessageSquareText, Play, Plus, Rocket, Trash2, UserRound } from "lucide-react";
+import { ArrowLeft, Clock, GitBranch, Hand, MessageSquareText, Play, Plus, Rocket, SlidersHorizontal, Trash2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
 import { hasSession, loadRemoteFlow, publishRemoteFlow, saveRemoteFlow } from "../api";
@@ -17,6 +17,8 @@ const icons: Record<FlowNodeType, typeof MessageSquareText> = {
 export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMessage }: { flow: BotFlowDocument; projectId: string; onChange: (flow: BotFlowDocument) => void; onBack: () => void; onLaunch: () => void; onMessage: (message: string) => void }) {
   const [selectedId, setSelectedId] = useState<string | undefined>(flow.nodes[1]?.id ?? flow.nodes[0]?.id);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const compact = useCompact();
+  const [sheet, setSheet] = useState<"none" | "palette" | "inspector">("none");
   const [revision, setRevision] = useState<number>();
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const skipNextSave = useRef(true);
@@ -127,7 +129,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     setSelectedId(undefined);
   }
 
-  return <div className="flow-screen">
+  return <div className={`flow-screen ${compact ? "compact" : ""}`}>
     <header className="builder-top">
       <div>
         <button className="icon-button" onClick={onBack} aria-label="Вернуться в кабинет"><ArrowLeft /></button>
@@ -141,11 +143,12 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     </header>
 
     <div className="flow-body">
-      <aside className="flow-palette">
+      <aside className={`flow-palette ${compact && sheet === "palette" ? "open" : ""}`}>
+        {compact && <div className="sheet-top"><b>Шаги сценария</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>}
         <span className="label">ШАГИ СЦЕНАРИЯ</span>
         {nodeCatalog.map(({ type, title, hint }) => {
           const Icon = icons[type];
-          return <button key={type} onClick={() => addNode(type)}><span className="pal-icon"><Icon /></span><span className="pal-text"><b>{title}</b><small>{hint}</small></span><Plus /></button>;
+          return <button key={type} onClick={() => { addNode(type); if (compact) setSheet("inspector"); }}><span className="pal-icon"><Icon /></span><span className="pal-text"><b>{title}</b><small>{hint}</small></span><Plus /></button>;
         })}
         <p className="flow-tip">Соедините точку справа от шага со следующим шагом. У сообщения с кнопками своя точка на каждую кнопку.</p>
       </aside>
@@ -158,20 +161,29 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeClick={(_event, node) => setSelectedId(node.id)}
-          onPaneClick={() => setSelectedId(undefined)}
+          onNodeClick={(_event, node) => { setSelectedId(node.id); if (compact) setSheet("inspector"); }}
+          onPaneClick={() => { setSelectedId(undefined); if (compact) setSheet("none"); }}
           fitView
           proOptions={{ hideAttribution: false }}
           defaultEdgeOptions={{ animated: false, type: "smoothstep" }}
           connectionLineType={ConnectionLineType.SmoothStep}
+          // Two fingers must zoom, and far enough out to see a long scenario:
+          // React Flow stops at 0.5 by default, which on a phone is still huge.
+          minZoom={0.15}
+          maxZoom={2.5}
+          zoomOnPinch
+          panOnDrag
+          zoomOnDoubleClick={!compact}
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2A2A44" />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
+          <Controls showInteractive={false} position={compact ? "top-right" : "bottom-left"} />
+          {/* The minimap eats a corner of a phone screen and helps nobody there. */}
+          {!compact && <MiniMap pannable zoomable />}
         </ReactFlow>
       </div>
 
-      <aside className="inspector">
+      <aside className={`inspector ${compact && sheet === "inspector" ? "open" : ""}`}>
+        {compact && <div className="sheet-top"><b>Настройки шага</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>}
         {selected ? <>
           <div className="inspector-title">
             <div><span className="inspector-icon">{nodeIcon(selected.type)}</span><span><b>{nodeCatalog.find((item) => item.type === selected.type)?.title}</b><small>Настройки шага</small></span></div>
@@ -182,8 +194,27 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
       </aside>
     </div>
 
+    {compact && <nav className="flow-tabs" aria-label="Разделы редактора">
+      <button className={sheet === "none" ? "on" : ""} onClick={() => setSheet("none")}><Hand />Холст</button>
+      <button className={sheet === "palette" ? "on" : ""} onClick={() => setSheet("palette")}><Plus />Шаги</button>
+      <button className={sheet === "inspector" ? "on" : ""} onClick={() => setSheet("inspector")}><SlidersHorizontal />Настройки</button>
+    </nav>}
+
     {simulatorOpen && <FlowSimulator flow={flow} onClose={() => setSimulatorOpen(false)} />}
   </div>;
+}
+
+/** A phone gets sheets and a tab bar instead of three columns side by side. */
+function useCompact(): boolean {
+  const query = "(max-width: 860px)";
+  const [compact, setCompact] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const media = matchMedia(query);
+    const sync = () => setCompact(media.matches);
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  return compact;
 }
 
 function toCanvasNodes(flow: BotFlowDocument, selectedId: string | undefined, onChange: (node: FlowNode) => void): CanvasNode[] {
