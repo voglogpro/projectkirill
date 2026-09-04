@@ -2,7 +2,7 @@ import { submitForm } from "./api";
 import { telegram } from "./telegram";
 import type { AppBlock, AppManifest, AppPage } from "./types";
 
-export function renderApp(root: HTMLElement, manifest: AppManifest): void {
+export function renderApp(root: HTMLElement, manifest: AppManifest, asSite = false): void {
   let currentPageId = manifest.entryPageId;
   const history: string[] = [];
   const navigate = (id: string) => { if (!manifest.pages.some((page) => page.id === id) || id === currentPageId) return; history.push(currentPageId); currentPageId = id; draw(); };
@@ -11,6 +11,17 @@ export function renderApp(root: HTMLElement, manifest: AppManifest): void {
     root.replaceChildren();
     if (page === undefined) { root.append(stateScreen("Страница не найдена")); return; }
     const shell = element("main", "app-shell");
+    // On the public site the page needs a name and a way back into Telegram;
+    // inside Telegram the client already draws both.
+    if (asSite) {
+      const head = element("header", "site-head");
+      const title = element("b"); title.textContent = manifest.project.name;
+      const open = document.createElement("a");
+      open.textContent = "Открыть в Telegram";
+      open.href = `/app/${manifest.project.publicId}`;
+      head.append(title, open);
+      shell.append(head);
+    }
     telegram.setBackHandler(history.length === 0 ? undefined : () => { const previous = history.pop(); if (previous) { currentPageId = previous; draw(); } });
     for (const block of page.blocks) shell.append(renderBlock(block, manifest.project.publicId, page, navigate));
     const footer = element("footer"); footer.textContent = "Работает на KIRA"; shell.append(footer); root.append(shell);

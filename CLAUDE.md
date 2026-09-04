@@ -40,7 +40,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/tma_builder node index.
 - `src/` — Fastify + Zod + PostgreSQL: auth, проекты и страницы (JSONB),
   биллинг, подключение бота, webhook и worker Telegram.
 - `apps/web/` — React-кабинет: лендинг, дашборд, редактор, мастер запуска.
-- `apps/miniapp/` — рендерер Mini App без UI-фреймворка (~4 kB gzip).
+- `apps/miniapp/` — рендерер Mini App без UI-фреймворка (~4 kB gzip). Он же отдаёт
+  публичный сайт на `/s/:publicId` — тот же релиз, другая раскладка.
+- `motion/` — HyperFrames: анимации для сайта. `npx hyperframes render .` в
+  `motion/videos/<проект>`, готовый файл кладём в `apps/web/public/media`.
 - `tools/preview/` — стенд: собирает боевые бандлы в одну HTML-страницу поверх
   браузерного стенд-бэкенда. Не импортируется продуктом.
 - `docs/API.md` — маршруты, `ARCHITECTURE.md` — модель данных и границы.
@@ -53,6 +56,9 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/tma_builder node index.
 - Никаких внешних хостов в дефолтах контента — приложение должно открываться
   в Telegram на слабой связи.
 - Токены ботов только в зашифрованном виде, в логи не попадают.
+- Палитра одна на весь продукт: токены в `:root` (`apps/web/src/styles.css`),
+  фон `#0A0A12`, плитки `#12121F`, акцент — градиент `#7C5CFF → #2AABEE`.
+  `color: white` на цветной подложке пишем как `var(--on-accent)`.
 
 ## Хостинг
 

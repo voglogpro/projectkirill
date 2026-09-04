@@ -1,4 +1,4 @@
-import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
+import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ArrowLeft, Clock, GitBranch, MessageSquareText, Play, Plus, Rocket, Trash2, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -78,7 +78,10 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   }, [flow, selectedId, updateNode]);
 
   const edges = useMemo<Edge[]>(() => flow.edges.map((edge) => ({
-    id: edge.id, source: edge.from, sourceHandle: edge.fromHandle, target: edge.to, animated: true,
+    // Steady light, never marching ants: the glow lives in CSS so the line
+    // reads as one lit filament from the button to the step it opens.
+    id: edge.id, source: edge.from, sourceHandle: edge.fromHandle, target: edge.to,
+    animated: false, type: "smoothstep",
   })), [flow.edges]);
 
   function onNodesChange(changes: NodeChange<CanvasNode>[]) {
@@ -159,9 +162,10 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           onPaneClick={() => setSelectedId(undefined)}
           fitView
           proOptions={{ hideAttribution: false }}
-          defaultEdgeOptions={{ animated: true }}
+          defaultEdgeOptions={{ animated: false, type: "smoothstep" }}
+          connectionLineType={ConnectionLineType.SmoothStep}
         >
-          <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} />
+          <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2A2A44" />
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable />
         </ReactFlow>

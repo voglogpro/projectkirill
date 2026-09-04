@@ -22,6 +22,13 @@
 - `POST /v1/telegram/webhooks/:publicIntegrationId` — ingress с проверкой секретного заголовка;
 - `POST /v1/public/apps/:publicId/forms` — проверка Telegram `initData` и сохранение формы.
 
+## Публичные страницы
+
+- `/app/:publicId` — Mini App внутри Telegram.
+- `/s/:publicId` — тот же опубликованный документ страницы, но как обычный сайт:
+  шире колонка, свой заголовок, тёмная тема KIRA. Отдельного контента не заводит —
+  сайт и Mini App всегда показывают один и тот же релиз.
+
 ## Тарифы
 
 - `GET /v1/billing/plans`

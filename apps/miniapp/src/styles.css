@@ -19,3 +19,34 @@ h1,h2,h3,p { margin-top: 0; overflow-wrap: anywhere; }h1 { font-size: 30px; line
 .action,.product-body button,.state-screen button { background: var(--tg-theme-button-color,#17784b); }
 .style-secondary { background: var(--tg-theme-secondary-bg-color,#f4ecee); }
 .form input:focus,.form select:focus,.form textarea:focus { border-color: var(--tg-theme-button-color,#17784b); }
+
+/* Night fallback in the KIRA palette. Inside Telegram every --tg-theme-*
+   variable is set by the client and still wins, so this only shows up in the
+   console preview and on the public site. */
+:root {
+  color: var(--tg-theme-text-color, #F5F4FF);
+  background: var(--tg-theme-bg-color, #0A0A12);
+}
+body { background: var(--tg-theme-bg-color, #0A0A12); }
+.text { color: var(--tg-theme-text-color, #D5D3EC); }
+.tone-secondary,.tone-hint,.app-shell footer,.state-screen p,.form label,.product-body p { color: var(--tg-theme-hint-color, #A5A2C6); }
+.surface-secondary,.product,.form,.form-success,.state-screen > span { background: var(--tg-theme-secondary-bg-color, #12121F); }
+.surface-accent { color: var(--tg-theme-button-text-color, #fff); background: var(--tg-theme-button-color, linear-gradient(135deg, #7C5CFF, #2AABEE)); }
+.action,.product-body button,.state-screen button { background: var(--tg-theme-button-color, linear-gradient(135deg, #7C5CFF, #2AABEE)); }
+.style-secondary { color: var(--tg-theme-text-color, #F5F4FF); background: var(--tg-theme-secondary-bg-color, #191A2B); }
+.style-link { color: var(--tg-theme-link-color, #7DD3FC); }
+.media,.skeleton i,.product-photo { background: var(--tg-theme-secondary-bg-color, #191A2B); }
+.product-photo { background: linear-gradient(145deg, rgba(124,92,255,.4), rgba(42,171,238,.3)); }
+.form input,.form select,.form textarea { color: var(--tg-theme-text-color, #F5F4FF); background: var(--tg-theme-bg-color, #191A2B); border-color: rgba(255,255,255,.12); }
+.form input:focus,.form select:focus,.form textarea:focus { border-color: var(--tg-theme-button-color, #7C5CFF); }
+.product { box-shadow: 0 14px 34px rgba(0,0,0,.4); }
+
+/* Public site: the same page document, laid out for a browser instead of a chat. */
+body.site { background: #0A0A12; background-image: radial-gradient(700px 420px at 80% -6%, rgba(124,92,255,.2), transparent 70%); }
+body.site .app-shell { width: min(100%, 980px); padding: 26px 20px 60px; gap: 16px; }
+body.site h1 { font-size: clamp(34px, 5vw, 56px); }
+body.site .section { border: 1px solid rgba(255,255,255,.08); }
+body.site .site-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0 8px; }
+body.site .site-head b { font-size: 18px; font-weight: 700; }
+body.site .site-head a { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #7C5CFF, #2AABEE); font-size: 13px; font-weight: 700; text-decoration: none; }
+body.site .app-shell footer a { color: #A78BFA; }

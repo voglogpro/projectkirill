@@ -21,6 +21,8 @@ app.get("/robots.txt", async (_request, reply) => reply.type("text/plain; charse
 app.get("/llms.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("# KIRA\n\nNo-code constructor for Telegram bots and Mini Apps. Users can build a draft for free and pay only when publishing.\n"));
 app.get("/app", async (_request, reply) => reply.code(302).header("location", "/workspace").send());
 app.get("/app/*", async (_request, reply) => sendIndex(reply, miniAppRoot));
+// The published page document doubles as a public site at /s/<publicId>.
+app.get("/s/*", async (_request, reply) => sendIndex(reply, miniAppRoot));
 
 app.setNotFoundHandler(async (request, reply) => {
   if (request.method === "GET" && !request.url.startsWith("/v1/") && !request.url.startsWith("/health/")) {
