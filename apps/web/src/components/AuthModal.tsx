@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, Eye, EyeOff, Lock, X } from "lucide-react";
+import { Bot, ChevronRight, Eye, EyeOff, Lock, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loginAccount, registerAccount } from "../api";
 
@@ -43,7 +43,17 @@ export function AuthModal({ initialMode = "register", onClose, onAuthenticated, 
   return <div className="modal-backdrop auth-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
     <form className="auth-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="auth-title" autoComplete="on">
       <button type="button" className="modal-close" onClick={onClose} aria-label="Закрыть окно"><X /></button>
-      <div className="brand auth-brand"><span className="brand-mark"><Bot /></span>KIRA</div>
+      <div className="auth-side">
+        <div className="brand auth-brand"><span className="brand-mark"><Bot /></span>KIRA</div>
+        <h3>Что будет дальше</h3>
+        <ol className="auth-steps">
+          <li><i>1</i><span><b>Выберете задачу</b><small>Заявки, запись, магазин, поддержка — сценарий уже собран.</small></span></li>
+          <li><i>2</i><span><b>Поменяете тексты</b><small>На холсте, мышкой. Рядом чат — сразу видно, что ответит бот.</small></span></li>
+          <li><i>3</i><span><b>Нажмёте «Запустить»</b><small>Бота, токен и хостинг подключим мы. Обычно это десять минут.</small></span></li>
+        </ol>
+        <p className="auth-side-note"><Sparkles size={14} /> Собрать и проверить можно бесплатно. Платить нужно только чтобы бот заработал у клиентов.</p>
+      </div>
+      <div className="auth-main">
       <div className="auth-heading">
         <h2 id="auth-title">{mode === "register" ? "Создайте аккаунт" : "С возвращением"}</h2>
         <p>{mode === "register" ? "Собирайте проект бесплатно. Оплата понадобится только перед публикацией." : "Войдите, чтобы продолжить работу."}</p>
@@ -60,6 +70,7 @@ export function AuthModal({ initialMode = "register", onClose, onAuthenticated, 
       {mode === "login" && <a className="auth-help" href="mailto:support@tmastudio.ru?subject=Восстановление доступа">Не получается войти? Написать в поддержку</a>}
       <div className="demo-divider"><span>или</span></div>
       <button type="button" className="outline-button demo-button" onClick={onDemo}>Открыть демо без регистрации</button>
+      </div>
     </form>
   </div>;
 }
