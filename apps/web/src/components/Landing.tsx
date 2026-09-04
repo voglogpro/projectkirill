@@ -3,20 +3,13 @@ import {
   Bot,
   CalendarDays,
   Check,
-  Clock,
-  FileText,
-  HelpCircle,
+  GraduationCap,
+  Lock,
   MessageSquareText,
-  Minus,
-  MousePointerClick,
-  Quote,
   Rocket,
-  Server,
-  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Users,
-  Wallet,
   Wrench,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -24,66 +17,23 @@ import type { FlowTemplateId } from "../flow-store";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
 
-const abilities = [
-  { icon: MessageSquareText, title: "Отвечает сам", text: "Приветствие, кнопки и ответы на частые вопросы — круглосуточно." },
-  { icon: Users, title: "Собирает заявки", text: "Спрашивает имя и телефон, проверяет ответ и складывает контакты в кабинет." },
-  { icon: CalendarDays, title: "Записывает клиентов", text: "Клиент выбирает услугу кнопкой и оставляет контакты — вы подтверждаете." },
-  { icon: ShieldCheck, title: "Передаёт человеку", text: "Сложный вопрос бот честно отдаёт оператору, а не выдумывает ответ." },
-  { icon: Wallet, title: "Показывает цены", text: "Разделы кнопками, прайс и переход к заказу — без сайта и приложения." },
-  { icon: Clock, title: "Помнит ответы", text: "Что клиент написал раньше, подставляется дальше: «Спасибо, Анна!»" },
+/**
+ * The product is a constructor for any bot, not a support desk — so the page
+ * leads with what people build, and every kind carries its own colour.
+ */
+const kinds: Array<{ id: string; icon: typeof Bot; title: string; text: string; ready: boolean; template: FlowTemplateId }> = [
+  { id: "leads", icon: Users, title: "Заявки и лиды", text: "Спросит имя и телефон, проверит ответ и сложит контакты в кабинет.", ready: true, template: "leads" },
+  { id: "booking", icon: CalendarDays, title: "Онлайн-запись", text: "Клиент выбирает услугу и время кнопками — вы только подтверждаете.", ready: true, template: "booking" },
+  { id: "shop", icon: ShoppingBag, title: "Магазин и витрина", text: "Разделы, цены, карточки товаров и переход к заказу прямо в чате.", ready: true, template: "catalog" },
+  { id: "support", icon: MessageSquareText, title: "Поддержка и вопросы", text: "Частые вопросы кнопками, сложные — живому оператору.", ready: true, template: "faq" },
+  { id: "course", icon: GraduationCap, title: "Курс и обучение", text: "Уроки по расписанию, проверка заданий, доступ по оплате.", ready: false, template: "blank" },
+  { id: "club", icon: Lock, title: "Закрытый клуб", text: "Заявки в канал, анкета на входе и доступ только своим.", ready: false, template: "blank" },
 ];
 
-/** The product's own output is the most convincing thing to put in the hero. */
-const conversation = [
-  { from: "user", text: "/start" },
-  { from: "bot", text: "Здравствуйте! Записать вас или показать цены?", buttons: ["Записаться", "Цены"] },
-  { from: "user", text: "Записаться" },
-  { from: "bot", text: "Как вас зовут?" },
-  { from: "user", text: "Анна" },
-  { from: "bot", text: "Оставьте телефон — подтвердим время." },
-  { from: "user", text: "+7 900 123-45-67" },
-  { from: "bot", text: "Записали, Анна! Перезвоним и подтвердим." },
-] as const;
-
-/**
- * Real customer quotes only. Until they exist the section shows an honest
- * empty state instead of invented praise — a made-up review on a live site
- * is a risk for the owner, not social proof.
- */
-const reviews: Array<{ name: string; role: string; text: string }> = [];
-
 const steps = [
-  {
-    title: "Выбираете сценарий",
-    text: "Заявки, запись, витрина или ответы на вопросы. Разговор уже написан целиком — с кнопками и вопросами.",
-  },
-  {
-    title: "Видите весь разговор на холсте",
-    text: "Каждое сообщение — карточка, каждая кнопка — стрелка к следующей карточке. Видно, куда попадёт клиент после любого нажатия.",
-  },
-  {
-    title: "Меняете тексты под своё дело",
-    text: "Кликаете карточку — справа открываются поля: текст сообщения, подписи кнопок, какой ответ спросить. Ничего не сохраняете руками.",
-  },
-  {
-    title: "Проверяете бота в чате",
-    text: "Рядом с холстом чат: жмёте кнопки как клиент и сразу видите, что ответит бот. До запуска, без Telegram.",
-  },
-  {
-    title: "Нажимаете «Запустить»",
-    text: "Бота создаём мы: токен, кнопка меню, хостинг и HTTPS — внутри тарифа. Через минуту он отвечает вашим клиентам в Telegram.",
-  },
-] as const;
-
-const included = [
-  { feature: "Холст сценария и проверка в чате", free: true, solo: true, trio: true },
-  { feature: "Работающий бот в Telegram", free: false, solo: true, trio: true },
-  { feature: "Заявки клиентов в кабинете", free: false, solo: true, trio: true },
-  { feature: "Хостинг, домен и HTTPS", free: false, solo: true, trio: true },
-  { feature: "Без лимита на число подписчиков", free: false, solo: true, trio: true },
-  { feature: "Mini App внутри Telegram", free: false, solo: false, trio: true },
-  { feature: "Сайт на том же содержимом", free: false, solo: false, trio: true },
-  { feature: "Несколько продуктов в одном кабинете", free: false, solo: false, trio: true },
+  { title: "Собираете разговор", text: "Карточка-сообщение, кнопки, вопрос, развилка. Мышкой, без кода." },
+  { title: "Проверяете в чате", text: "Тот же движок, что в Telegram: жмёте кнопки как клиент." },
+  { title: "Нажимаете «Запустить»", text: "Бота, токен, меню и хостинг берём на себя." },
 ];
 
 export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent) => void; onService: () => void }) {
@@ -102,12 +52,10 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     <header className="landing-nav">
       <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
       <nav aria-label="Навигация по странице">
+        <a href="#kinds">Что можно собрать</a>
         <a href="#how">Как это работает</a>
         <a href="#pricing">Тарифы</a>
-        <a href="#reviews">Отзывы</a>
-        <a href="#why-cheap">Почему так дёшево</a>
         <a href="#faq">Вопросы</a>
-        <a href="#about">О компании</a>
         <button className="nav-service" onClick={onService}><Wrench size={15} /> Бот под ключ</button>
       </nav>
       <div className="nav-actions">
@@ -120,247 +68,127 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="hero" id="top">
         <div className="hero-copy">
           <div className="eyebrow"><Sparkles size={15} /> КОНСТРУКТОР TELEGRAM-БОТОВ</div>
-          <h1>Бот отвечает.<br /><em>Вы работаете.</em></h1>
-          <p>Соберите разговор мышкой и нажмите «Запустить» — бота, токен и хостинг мы берём на себя.</p>
+          <h1>Любой бот<br /><em>за десять минут</em></h1>
+          <p>Заявки, запись, магазин, обучение, закрытый клуб, поддержка — что угодно. Собираете разговор мышкой, а бота, токен и хостинг берём мы.</p>
           <div className="hero-actions">
-            <button className="primary-button large" onClick={() => onStart()}>Создать бота <ArrowRight size={17} /></button>
-            <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или посмотреть пример</button>
+            <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
+            <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
           </div>
-        </div>
-        <ol className="hero-marks"><li>01 / собрал</li><li>02 / проверил</li><li className="now">03 / запустил</li></ol>
-      </section>
-
-      <section className="bento" aria-label="Что вы получаете">
-        <article className="tile tile-canvas">
-          <header><span>ХОЛСТ СЦЕНАРИЯ</span><em>черновик сохранён</em></header>
-          <div className="mini-flow">
-            <div className="mini-node accent"><i>СООБЩЕНИЕ</i><b>Здравствуйте! Записать вас или показать цены?</b><span><em>Записаться</em><em>Цены</em></span></div>
-            <svg viewBox="0 0 230 34" aria-hidden="true"><path d="M115 0 V12 H30 V34" /><path d="M115 12 H200 V34" /></svg>
-            <div className="mini-pair">
-              <div className="mini-node"><i>ВОПРОС</i><b>Как вас зовут?</b></div>
-              <div className="mini-node"><i>СООБЩЕНИЕ</i><b>Стрижка — от 1 500 ₽</b></div>
-            </div>
-          </div>
-          <footer>6 блоков · 5 связей</footer>
-        </article>
-
-        <article className="tile tile-chat">
-          <header><span>ЧТО ВИДИТ КЛИЕНТ</span></header>
-          <ChatDemo />
-        </article>
-
-        <button className="tile tile-price" onClick={() => onStart({ plan: "solo" })}>
-          <span className="tile-label">ПОДПИСКА</span>
-          <strong>350 ₽</strong>
-          <small>в месяц за бота</small>
-          <span className="tile-go">Собрать бота <ArrowRight size={14} /></span>
-        </button>
-
-        <button className="tile tile-price" onClick={() => onStart({ plan: "trio" })}>
-          <span className="tile-label">ВСЁ СРАЗУ</span>
-          <strong>650 ₽</strong>
-          <small>бот, Mini App и сайт</small>
-          <span className="tile-go">Собрать всё <ArrowRight size={14} /></span>
-        </button>
-
-        <article className="tile tile-leads">
-          <header><span>ЗАЯВКИ В КАБИНЕТЕ</span><em>+3 сегодня</em></header>
-          <ul>
-            <li><b>Анна · стрижка</b><span>+7 900 123-45-67</span></li>
-            <li><b>Игорь · окрашивание</b><span>+7 921 555-10-20</span></li>
+          <ul className="hero-chips">
+            <li><Check size={14} /> Без кода</li>
+            <li><Check size={14} /> Без карты на старте</li>
+            <li><Check size={14} /> Хостинг внутри</li>
+            <li><Check size={14} /> Лимита подписчиков нет</li>
           </ul>
-        </article>
-
-        <article className="tile tile-launch">
-          <div>
-            <span className="tile-label">ЗАПУСК</span>
-            <h3>Токен, меню, хостинг — на нас</h3>
-            <p>Вам остаётся текст. Подписчиков сколько угодно — цена та же.</p>
-          </div>
-          <button className="light-button" onClick={() => onStart()}>Запустить</button>
-        </article>
-
-        <article className="tile tile-turnkey">
-          <div>
-            <span className="tile-label">НЕКОГДА СОБИРАТЬ?</span>
-            <h3>Соберём за вас — от 4 900 ₽</h3>
-          </div>
-          <button className="outline-button" onClick={onService}>Подробнее</button>
-        </article>
-      </section>
-
-      <section className="service-strip" aria-label="Что входит в платформу">
-        <div><Rocket /><span><b>Запуск в один клик</b><small>Бота создаём мы, вам нужен только текст</small></span></div>
-        <div><Users /><span><b>Платите за продукты</b><small>А не за число подписчиков, как у других</small></span></div>
-        <div><ShieldCheck /><span><b>Токен зашифрован</b><small>AES-256-GCM перед хранением</small></span></div>
-        <div><Clock /><span><b>Работает без вас</b><small>Отвечает ночью, в выходные и в отпуске</small></span></div>
-      </section>
-
-      <HowItWorks onStart={() => onStart()} />
-
-      <section className="features" id="abilities">
-        <div className="section-heading"><span>ЧТО УМЕЕТ БОТ</span><h2>Первая линия поддержки, которая не устаёт</h2><p>Всё это собирается мышкой: сообщения, кнопки, вопросы и развилки.</p></div>
-        <div className="feature-grid">{abilities.map(({ icon: Icon, title, text }) => <article key={title}><span><Icon /></span><h3>{title}</h3><p>{text}</p></article>)}</div>
-      </section>
-
-      <section className="templates" id="scenarios">
-        <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Не начинайте с пустого экрана</h2><p>Диалог уже написан — останется поменять услуги, цены и тексты под себя.</p></div>
-        <div className="template-grid">
-          <Template icon={<FileText />} title="Сбор заявок" text="Спросит имя и телефон, проверит ответ и передаст контакты вам." onClick={() => onStart({ templateId: "leads" })} />
-          <Template icon={<CalendarDays />} title="Онлайн-запись" text="Клиент выбирает услугу кнопкой и оставляет контакты." onClick={() => onStart({ templateId: "booking" })} />
-          <Template icon={<ShoppingBag />} title="Витрина и цены" text="Разделы кнопками, прайс и переход к заказу." onClick={() => onStart({ templateId: "catalog" })} />
-          <Template icon={<HelpCircle />} title="Ответы на вопросы" text="Частые вопросы кнопками, сложные — оператору." onClick={() => onStart({ templateId: "faq" })} />
         </div>
+        <BuildLoop />
+      </section>
+
+      <section className="kinds" id="kinds">
+        <div className="section-heading"><span>ЧТО МОЖНО СОБРАТЬ</span><h2>Бот под вашу задачу, а не «универсальный»</h2><p>Выберите, с чего начать — сценарий откроется сразу, останется поменять тексты.</p></div>
+        <div className="kind-grid">
+          {kinds.map(({ id, icon: Icon, title, text, ready, template }) => <button key={id} className={`kind kind-${id}`} onClick={() => onStart({ templateId: template })}>
+            <span className="kind-icon"><Icon /></span>
+            <b>{title}</b>
+            <p>{text}</p>
+            <span className="kind-go">{ready ? "Готовый сценарий" : "Собрать с нуля"} <ArrowRight size={14} /></span>
+          </button>)}
+        </div>
+      </section>
+
+      <section className="how" id="how">
+        <div className="section-heading"><span>КАК ЭТО РАБОТАЕТ</span><h2>Три шага до бота в Telegram</h2></div>
+        <ol className="how-rail">
+          {steps.map((step, index) => <li key={step.title}><i>{index + 1}</i><b>{step.title}</b><small>{step.text}</small></li>)}
+        </ol>
+        <div className="how-cta"><button className="primary-button large" onClick={() => onStart()}>Собрать так же <ArrowRight size={17} /></button></div>
       </section>
 
       <section className="pricing" id="pricing">
-        <div className="section-heading"><span>ТАРИФЫ</span><h2>Платите за то, что собрали</h2><p>Не за подписчиков. Сколько бы клиентов ни пришло, цена не меняется.</p></div>
+        <div className="section-heading"><span>ТАРИФЫ</span><h2>Платите за то, что собрали</h2><p>Не за подписчиков: один сервер обслуживает всех, поэтому цена не растёт вместе с вами.</p></div>
         <div className="price-grid">
           <Price name="Черновик" price="0 ₽" description="Собрать и проверить" items={["Холст сценария целиком", "Проверка бота в чате", "Один проект", "Без банковской карты"]} action="Собрать бесплатно" onClick={() => onStart()} />
           <Price featured name="Один продукт" price="350 ₽" suffix="/ месяц" description="Бот в Telegram" items={["Работающий Telegram-бот", "Без лимита на подписчиков", "Заявки в кабинете", "Хостинг и HTTPS"]} action="Запустить бота" onClick={() => onStart({ plan: "solo" })} />
           <Price name="До трёх продуктов" price="650 ₽" suffix="/ месяц" description="Бот, Mini App и сайт" items={["Всё из тарифа слева", "Mini App внутри Telegram", "Сайт на том же контенте", "Один кабинет на всё"]} action="Запустить всё" onClick={() => onStart({ plan: "trio" })} />
         </div>
-
-        <div className="compare">
-          <h3>Что именно даёт подписка</h3>
-          <table>
-            <thead><tr><th scope="col">Возможность</th><th scope="col">Черновик<small>0 ₽</small></th><th scope="col">Один продукт<small>350 ₽</small></th><th scope="col">До трёх<small>650 ₽</small></th></tr></thead>
-            <tbody>
-              {included.map((row) => <tr key={row.feature}>
-                <th scope="row">{row.feature}</th>
-                <td>{row.free ? <Check aria-label="есть" /> : <Minus aria-label="нет" className="off" />}</td>
-                <td>{row.solo ? <Check aria-label="есть" /> : <Minus aria-label="нет" className="off" />}</td>
-                <td>{row.trio ? <Check aria-label="есть" /> : <Minus aria-label="нет" className="off" />}</td>
-              </tr>)}
-            </tbody>
-          </table>
-          <p className="compare-note">Подписка помесячная, отменяется в кабинете в один клик. Сценарий и заявки остаются у вас даже после отмены.</p>
-        </div>
-      </section>
-
-      <section className="why-cheap" id="why-cheap">
-        <div className="section-heading"><span>ЧЕСТНО О ЦЕНЕ</span><h2>Почему 350 ₽, а не 3 500</h2><p>Не потому, что «пока акция». Просто наши расходы устроены иначе.</p></div>
-        <div className="reason-grid">
-          <article><Server /><h3>Один сервер на всех</h3><p>Боты не живут каждый на своей машине: все приходят на один вебхук и различаются внутри. Сто клиентов стоят нам примерно как один.</p></article>
-          <article><MousePointerClick /><h3>Никаких менеджеров</h3><p>Вы регистрируетесь, собираете и платите сами — нам не нужен отдел продаж, а вам не нужно ждать звонка.</p></article>
-          <article><Users /><h3>Считаем продукты, а не людей</h3><p>Другие берут деньги за каждую тысячу подписчиков. Мы — за то, что вы собрали. Ваш рост не увеличивает наш счёт.</p></article>
-          <article><Wallet /><h3>Берём массой, а не суммой</h3><p>Нам выгоднее сто человек по 350 ₽, чем десять по 3 500. Поэтому цену не поднимаем — расширяем то, что входит.</p></article>
-        </div>
-        <p className="why-note">Что мы <b>не</b> обещаем за эти деньги: индивидуальную разработку, интеграцию с вашей CRM и круглосуточную поддержку по телефону. Нужна работа руками — это <button className="link-button" onClick={onService}>бот под ключ</button>.</p>
       </section>
 
       <section className="service-band" aria-label="Бот под ключ">
         <div>
-          <span>НЕ ХОТИТЕ СОБИРАТЬ САМИ?</span>
+          <span>НЕКОГДА СОБИРАТЬ САМИ?</span>
           <h2>Соберём бота за вас — от 4 900 ₽</h2>
-          <p>Вы рассказываете про своё дело, мы пишем сценарий, собираем и запускаем. Кабинет остаётся вам: дальше правите сами или оставляете нам.</p>
+          <p>Вы рассказываете про своё дело, мы пишем сценарий, собираем и запускаем. Кабинет остаётся вам.</p>
         </div>
         <button className="cta-light" onClick={onService}>Посмотреть, что входит <ArrowRight /></button>
       </section>
 
-      <section className="reviews" id="reviews">
-        <div className="section-heading"><span>ОТЗЫВЫ</span><h2>Что говорят те, кто уже запустил</h2></div>
-        {reviews.length === 0
-          ? <div className="reviews-empty">
-              <Quote />
-              <h3>Мы только открылись — настоящих отзывов ещё нет</h3>
-              <p>Выдумывать чужие слова не будем: здесь появятся отзывы первых клиентов, как только они появятся. Соберите бота бесплатно и напишите нам, что получилось — за развёрнутый отзыв дадим два месяца подписки в подарок.</p>
-              <button className="primary-button large" onClick={() => onStart()}>Стать первым <ArrowRight size={17} /></button>
-            </div>
-          : <div className="review-grid">{reviews.map((review) => <article key={review.name}><Quote /><p>{review.text}</p><footer><b>{review.name}</b><small>{review.role}</small></footer></article>)}</div>}
-      </section>
-
-      <section className="about" id="about">
-        <div className="section-heading"><span>О КОМПАНИИ</span><h2>Маленькая студия, а не корпорация</h2></div>
-        <div className="about-grid">
-          <p>KIRA делает один инструмент и делает его хорошо: конструктор ботов для тех, кто ведёт дело руками — мастеров, салонов, небольших магазинов, репетиторов, локальных сервисов.</p>
-          <p>Мы считаем, что платить за автоматизацию должно быть не страшно. Поэтому берём фиксированную сумму за собранные продукты и не увеличиваем счёт, когда у вас становится больше клиентов. Растёте вы — не растёт наш тариф.</p>
-          <p>Пишите напрямую: <a href="mailto:support@tmastudio.ru">support@tmastudio.ru</a>. Отвечает человек, а не бот — иронично, но так честнее.</p>
-        </div>
-      </section>
-
       <section className="faq" id="faq">
-        <div className="section-heading"><span>ЧАСТЫЕ ВОПРОСЫ</span><h2>Что важно знать перед запуском</h2></div>
+        <div className="section-heading"><span>ЧАСТЫЕ ВОПРОСЫ</span><h2>Коротко о главном</h2></div>
         <div className="faq-list">
-          <Faq title="Правда за десять минут?">Столько занимает сборка по готовому сценарию: поменять тексты, проверить бота в чате и нажать «Запустить». Если пишете диалог с нуля и вдумчиво — дольше, и это нормально.</Faq>
           <Faq title="Нужно ли уметь программировать?">Нет. Диалог собирается мышкой: карточка-сообщение, кнопки, вопрос, развилка. Код видеть не придётся ни разу.</Faq>
-          <Faq title="Откуда возьмётся сам бот в Telegram?">Из вашего аккаунта. Мы показываем, как получить бота, забираем токен, шифруем его и подключаем — от вас нужно одно нажатие, никаких настроек сервера.</Faq>
-          <Faq title="Что можно сделать бесплатно?">Зарегистрироваться, собрать весь сценарий и проверить бота в чате. Оплата нужна только чтобы бот заработал в Telegram у настоящих клиентов.</Faq>
-          <Faq title="Куда попадают заявки клиентов?">В кабинет, списком: имя, телефон и то, что клиент выбирал кнопками. Ничего не теряется, даже если вы были не за компьютером.</Faq>
-          <Faq title="Нужен свой сервер или домен?">Нет. Хостинг и HTTPS-адрес входят в тариф — мы держим бота и Mini App у себя.</Faq>
+          <Faq title="Откуда возьмётся сам бот в Telegram?">Из вашего аккаунта. Мы показываем, как получить бота, забираем токен, шифруем его и подключаем — от вас одно нажатие.</Faq>
+          <Faq title="Что можно сделать бесплатно?">Зарегистрироваться, собрать весь сценарий и проверить его в чате. Платить нужно только чтобы бот заработал у настоящих клиентов.</Faq>
           <Faq title="Что будет, если клиентов станет много?">Ничего. Тариф считает продукты, а не подписчиков: хоть сто человек в день, хоть десять тысяч — цена та же.</Faq>
           <Faq title="Можно поменять сценарий после запуска?">Да, в любой момент. Правите текст на холсте, нажимаете «Опубликовать» — бот отвечает по-новому со следующего сообщения.</Faq>
-          <Faq title="Что произойдёт, если перестать платить?">Сценарий и заявки останутся в кабинете. Бот перестанет отвечать клиентам и снова заработает после продления.</Faq>
           <Faq title="А если я не хочу возиться сам?">Соберём за вас: от 4 900 ₽ разово. Подробности — <button className="link-button" onClick={onService}>на странице «Бот под ключ»</button>.</Faq>
         </div>
       </section>
 
-      <section className="final-cta"><div><span>ГОТОВЫ НАЧАТЬ?</span><h2>Соберите бота прямо сейчас</h2><p>Бесплатно, без карты и без установки чего-либо.</p></div><button className="cta-light" onClick={() => onStart()}>Создать бота <ArrowRight /></button></section>
+      <section className="final-cta">
+        <div><span>ГОТОВЫ НАЧАТЬ?</span><h2>Соберите своего бота прямо сейчас</h2><p>Бесплатно, без карты и без установки чего-либо.</p></div>
+        <button className="cta-light" onClick={() => onStart()}>Создать бота <ArrowRight /></button>
+      </section>
     </main>
 
-    <footer><a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a><div className="footer-links"><a href="#how">Как это работает</a><a href="#pricing">Тарифы</a><button onClick={onService}>Бот под ключ</button><a href="#about">О компании</a><a href="mailto:support@tmastudio.ru">Поддержка</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a></div><span>© 2026. Сделано для дела в Telegram.</span></footer>
+    <footer>
+      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
+      <div className="footer-links">
+        <a href="#kinds">Что можно собрать</a><a href="#pricing">Тарифы</a>
+        <button onClick={onService}>Бот под ключ</button>
+        <a href="mailto:support@tmastudio.ru">Поддержка</a><a href="/privacy">Конфиденциальность</a><a href="/terms">Условия</a>
+      </div>
+      <span>© 2026. Маленькая студия для дела в Telegram.</span>
+    </footer>
   </div>;
 }
 
-/** The build, shown rather than described: one camera pass over the console. */
-function HowItWorks({ onStart }: { onStart: () => void }) {
+/** The rendered build, playing like a GIF: no controls, no sound, no chrome. */
+function BuildLoop() {
   const video = useRef<HTMLVideoElement>(null);
+  const [reduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  // Autoplay costs nothing until the section is actually on screen.
   useEffect(() => {
     const element = video.current;
     if (element === null) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    element.muted = true; // React does not reflect the attribute, and autoplay needs it
+    if (reduced) return;
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        if (entry.isIntersecting) void element.play().catch(() => { /* the poster stays, controls remain */ });
+        if (entry.isIntersecting) void element.play().catch(() => { /* the poster stays */ });
         else element.pause();
       }
-    }, { threshold: 0.4 });
+    }, { threshold: 0.25 });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [reduced]);
 
-  return <section className="how" id="how">
-    <div className="section-heading"><span>КАК ЭТО РАБОТАЕТ</span><h2>От пустого холста до бота в Telegram</h2><p>Двадцать секунд без слов: собрали, проверили, добавили Mini App, запустили.</p></div>
-    <div className="how-player">
-      <video ref={video} src="/media/kira-build.mp4" poster="/media/kira-build-poster.jpg" muted loop playsInline preload="none" controls />
-    </div>
-    <ol className="how-rail">
-      {steps.map((step, index) => <li key={step.title}><i>{index + 1}</i><b>{step.title}</b><small>{step.text}</small></li>)}
-    </ol>
-    <div className="how-cta"><button className="primary-button large" onClick={onStart}>Собрать так же <ArrowRight size={17} /></button></div>
-  </section>;
-}
-
-/** The first three lines are there on load; the rest arrive so the chat feels live. */
-function ChatDemo() {
-  const [shown, setShown] = useState(3);
-  useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setShown(conversation.length); return; }
-    if (shown >= conversation.length) return;
-    const timer = setTimeout(() => setShown((value) => value + 1), conversation[shown]?.from === "bot" ? 900 : 550);
-    return () => clearTimeout(timer);
-  }, [shown]);
-
-  const waiting = shown < conversation.length && conversation[shown]?.from === "bot";
-  return <div className="hero-chat" aria-label="Пример разговора клиента с ботом">
-    <header><span className="avatar"><Bot size={17} /></span><span><b>Салон Нова</b><small>бот · отвечает сразу</small></span></header>
-    <div className="chat-body">
-      {conversation.slice(0, shown).map((line, index) => <div className={`chat-msg ${line.from}`} key={index}>
-        <div className="chat-bubble">
-          {line.text}
-          {"buttons" in line && line.buttons !== undefined && <span className="chat-buttons">{line.buttons.map((button) => <em key={button}>{button}</em>)}</span>}
-        </div>
-      </div>)}
-      {waiting && <div className="chat-msg bot"><div className="chat-bubble typing" aria-label="Бот печатает"><i /><i /><i /></div></div>}
-    </div>
-    <footer>Так выглядит бот, собранный на KIRA</footer>
-  </div>;
-}
-
-function Template({ icon, title, text, onClick }: { icon: React.ReactNode; title: string; text: string; onClick: () => void }) {
-  return <article className="template-card"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button onClick={onClick}>Взять сценарий <ArrowRight /></button></article>;
+  return <figure className="build-loop">
+    <video
+      ref={video}
+      poster="/media/kira-build-poster.jpg"
+      muted
+      loop
+      playsInline
+      autoPlay={!reduced}
+      preload="metadata"
+      controls={reduced}
+      aria-label="Как в KIRA собирается бот и Mini App"
+    >
+      <source src="/media/kira-build.webm" type="video/webm" />
+      <source src="/media/kira-build.mp4" type="video/mp4" />
+    </video>
+    <figcaption><Rocket size={14} /> Собрали сценарий → проверили в чате → добавили Mini App → запустили</figcaption>
+  </figure>;
 }
 
 function Price({ name, price, suffix, description, items, action, featured, onClick }: { name: string; price: string; suffix?: string; description: string; items: string[]; action: string; featured?: boolean; onClick: () => void }) {
@@ -370,4 +198,3 @@ function Price({ name, price, suffix, description, items, action, featured, onCl
 function Faq({ title, children }: { title: string; children: React.ReactNode }) {
   return <details><summary>{title}<span>+</span></summary><p>{children}</p></details>;
 }
-

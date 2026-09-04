@@ -25,7 +25,7 @@ const publicDir = resolve(root, "apps/web/public");
 const dataUri = async (path, type) => `data:${type};base64,${await base64(resolve(publicDir, path))}`;
 const inlinePublic = async (text) => {
   let result = text;
-  for (const [path, type] of [["media/kira-build.mp4", "video/mp4"], ["media/kira-build-poster.jpg", "image/jpeg"]]) {
+  for (const [path, type] of [["media/kira-build.webm", "video/webm"], ["media/kira-build.mp4", "video/mp4"], ["media/kira-build-poster.jpg", "image/jpeg"]]) {
     result = result.replaceAll(`/${path}`, await dataUri(path, type));
   }
   for (const name of await readdir(resolve(publicDir, "fonts"))) {

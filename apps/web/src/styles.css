@@ -1118,3 +1118,72 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .landing .tile-launch .light-button { flex: none; }
 .how .section-heading > span { color: #A78BFA; }
 .how .section-heading > p { color: var(--muted); }
+
+/* ============================================================
+   Landing v2: shorter page, one video that behaves like a GIF,
+   and a colour per kind of bot so the sections stop blending.
+   ============================================================ */
+.hero { grid-template-columns: minmax(0,1fr) minmax(420px,1.02fr); align-items: center; gap: 56px; padding: 64px 24px 72px; }
+.hero h1 { font-size: clamp(42px, 4.6vw, 72px); margin: 22px 0 20px; }
+.hero-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 10px 20px; padding: 0; margin: 28px 0 0; color: var(--muted); font-size: 13.5px; }
+.hero-chips li { display: inline-flex; align-items: center; gap: 7px; }
+.hero-chips svg { color: #7DD3FC; }
+
+.build-loop { margin: 0; display: grid; gap: 12px; }
+.build-loop video { display: block; width: 100%; height: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 22px; background: #08080F; box-shadow: 0 34px 80px rgba(0,0,0,.55); }
+.build-loop figcaption { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.build-loop figcaption svg { color: #A78BFA; }
+
+/* kinds — the colour system that separates the page */
+.kinds { padding: 26px max(24px,calc((100vw - 1320px)/2)) 84px; }
+.kind-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+.kind {
+  --c: #7C5CFF;
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; text-align: left;
+  padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: var(--tile); color: inherit; cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.kind::before { content: ''; position: absolute; inset: 0; border-radius: 22px; pointer-events: none; background: radial-gradient(320px 160px at 12% 0%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%); opacity: .55; }
+.kind:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c) 55%, transparent); box-shadow: 0 22px 50px color-mix(in srgb, var(--c) 18%, transparent); }
+.kind:hover::before { opacity: 1; }
+.kind > * { position: relative; }
+.kind-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--c); }
+.kind-icon svg { width: 22px; }
+.kind b { font-size: 18px; font-family: Unbounded, Onest, sans-serif; letter-spacing: -.03em; }
+.kind p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.kind-go { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 12px; color: var(--c); font-size: 12.5px; font-weight: 700; }
+.kind-leads { --c: #8B7BFF; }
+.kind-booking { --c: #38B6F1; }
+.kind-shop { --c: #22D3EE; }
+.kind-support { --c: #34D399; }
+.kind-course { --c: #F5B14C; }
+.kind-club { --c: #E879F9; }
+
+/* alternating grounds so sections read as separate rooms */
+.landing .how,.landing .faq { position: relative; background: #0E0E1C; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.landing .how { padding: 74px max(24px,calc((100vw - 1180px)/2)); }
+.landing .faq { padding: 74px max(24px,calc((100vw - 920px)/2)); }
+.landing .how-rail { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.landing .how-rail li { background: #14142a; }
+.landing .kinds .section-heading > span { color: #22D3EE; }
+.landing .how .section-heading > span { color: #A78BFA; }
+.landing .pricing .section-heading > span { color: #F5B14C; }
+.landing .faq .section-heading > span { color: #34D399; }
+.landing .pricing { padding: 78px 24px 40px; }
+.landing .service-band { margin: 56px auto; }
+.landing .final-cta { margin: 40px auto 74px; }
+
+@media (max-width: 1100px) { .kind-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; gap: 34px; padding-top: 40px; }
+  .build-loop { order: 2; }
+  .hero-chips { justify-content: flex-start; }
+}
+@media (max-width: 720px) {
+  .kinds { padding-block: 12px 56px; }
+  .kind-grid { grid-template-columns: 1fr; }
+  .landing .how,.landing .faq { padding-block: 56px; }
+  .landing .how-rail { grid-template-columns: 1fr; }
+  .hero-chips { gap: 8px 14px; font-size: 12.5px; }
+}
+.hero-actions { gap: 26px; }

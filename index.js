@@ -13,9 +13,12 @@ const webAssetsRoot = resolve(webRoot, "assets");
 const miniAppRoot = resolve("apps/miniapp/dist");
 
 app.get("/assets/*", async (request, reply) => sendAsset(reply, webAssetsRoot, request.params["*"]));
+// Everything the console references by absolute path lives beside the bundle.
+app.get("/media/*", async (request, reply) => sendAsset(reply, resolve(webRoot, "media"), request.params["*"]));
+app.get("/fonts/*", async (request, reply) => sendAsset(reply, resolve(webRoot, "fonts"), request.params["*"]));
 app.get("/miniapp-assets/*", async (request, reply) => sendAsset(reply, miniAppRoot, request.params["*"]));
 app.get("/robots.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("User-agent: *\nAllow: /\n"));
-app.get("/llms.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("# TMA Studio\n\nNo-code constructor for Telegram bots and Mini Apps. Users can build a draft for free and pay only when publishing.\n"));
+app.get("/llms.txt", async (_request, reply) => reply.type("text/plain; charset=utf-8").send("# KIRA\n\nNo-code constructor for Telegram bots and Mini Apps. Users can build a draft for free and pay only when publishing.\n"));
 app.get("/app", async (_request, reply) => reply.code(302).header("location", "/workspace").send());
 app.get("/app/*", async (_request, reply) => sendIndex(reply, miniAppRoot));
 
@@ -52,5 +55,5 @@ async function sendAsset(reply, root, untrustedPath) {
 }
 
 function mimeType(path) {
-  return ({ ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2" })[extname(path).toLowerCase()] ?? "application/octet-stream";
+  return ({ ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".mp4": "video/mp4", ".webm": "video/webm" })[extname(path).toLowerCase()] ?? "application/octet-stream";
 }
