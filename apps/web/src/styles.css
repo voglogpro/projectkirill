@@ -1405,3 +1405,16 @@ button { color: inherit; }
 .launch-progress span { background: var(--surface-2); }
 .token-field input { color: var(--ink); }
 .media-placeholder,.product-image,.form-preview { background: var(--surface-2); }
+
+/* the deck loops, and only the card in the middle is in focus */
+.landing .kind { opacity: .55; filter: blur(1.2px); transform: scale(.97); transition: opacity .28s ease, filter .28s ease, transform .28s ease, border-color .2s ease, box-shadow .28s ease; }
+.landing .kind.is-active { opacity: 1; filter: none; transform: none; border-color: color-mix(in srgb, var(--c) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent), 0 22px 54px color-mix(in srgb, var(--c) 20%, transparent); }
+.landing .kind:hover { opacity: 1; filter: none; transform: translateY(-4px); }
+.landing .kind.is-active:hover { transform: translateY(-4px); }
+.rail-arrow:disabled { opacity: 1; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .landing .kind { transition: none; } }
+
+/* a long word must never leave the screen on a phone */
+.section-heading h2 { overflow-wrap: break-word; }
+@media (max-width: 720px) { .section-heading h2 { font-size: 27px; letter-spacing: -.03em; } .hero h1 { letter-spacing: -.04em; } }
+@media (max-width: 430px) { .section-heading h2 { font-size: 23px; } .hero h1 { font-size: 34px; } }

@@ -152,47 +152,92 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
   </div>;
 }
 
-/** Kinds of bot, swiped sideways like a deck of cards. */
+/** Kinds of bot, swiped sideways like an endless deck of cards. */
+const RAIL_GAP = 16;
+const COPIES = 3;
+
 function KindRail({ onPick }: { onPick: (template: FlowTemplateId) => void }) {
   const rail = useRef<HTMLDivElement>(null);
+  const settle = useRef<number>(undefined);
   const [active, setActive] = useState(0);
 
-  // The rail is a plain scroller, so the dots read position instead of owning it.
-  const sync = () => {
-    const element = rail.current;
-    if (element === null) return;
-    const card = element.firstElementChild as HTMLElement | null;
-    if (card === null) return;
-    const step = card.offsetWidth + 16;
-    setActive(Math.min(kinds.length - 1, Math.max(0, Math.round(element.scrollLeft / step))));
-  };
-
-  const scrollTo = (index: number) => {
+  const metrics = () => {
     const element = rail.current;
     const card = element?.firstElementChild as HTMLElement | null;
-    if (element == null || card == null) return;
-    element.scrollTo({ left: index * (card.offsetWidth + 16), behavior: "smooth" });
+    if (element == null || card == null || card.offsetWidth === 0) return null;
+    const step = card.offsetWidth + RAIL_GAP;
+    return { element, step, set: step * kinds.length };
+  };
+
+  // Three identical copies of the deck; once the scroll settles we jump a whole
+  // copy back or forward, so the rail never reaches an end in either direction.
+  const recenter = () => {
+    const found = metrics();
+    if (found === null) return;
+    const { element, set } = found;
+    if (element.scrollLeft < set * 0.5) element.scrollLeft += set;
+    else if (element.scrollLeft > set * 1.5) element.scrollLeft -= set;
+  };
+
+  const sync = () => {
+    const found = metrics();
+    if (found === null) return;
+    const { element, step } = found;
+    const centre = element.scrollLeft + element.clientWidth / 2;
+    const index = Math.round((centre - step / 2) / step);
+    setActive(((index % kinds.length) + kinds.length) % kinds.length);
+    clearTimeout(settle.current);
+    settle.current = window.setTimeout(recenter, 160);
+  };
+
+  useEffect(() => {
+    const found = metrics();
+    if (found !== null) found.element.scrollLeft = found.set;
+    sync();
+    return () => clearTimeout(settle.current);
+  }, []);
+
+  const nudge = (direction: 1 | -1) => {
+    const found = metrics();
+    if (found === null) return;
+    found.element.scrollBy({ left: found.step * direction, behavior: "smooth" });
+  };
+
+  const jumpTo = (index: number) => {
+    const found = metrics();
+    if (found === null) return;
+    const { element, step, set } = found;
+    const base = Math.floor(element.scrollLeft / set) * set;
+    element.scrollTo({ left: base + index * step, behavior: "smooth" });
   };
 
   return <div className="kind-rail-wrap">
     <div className="kind-rail" ref={rail} onScroll={sync} tabIndex={0} role="group" aria-label="Что можно собрать">
-      {kinds.map(({ id, icon: Icon, title, text, problem, demo, ready, template }) => <button key={id} className={`kind kind-${id}`} onClick={() => onPick(template)}>
-        <span className="kind-icon"><Icon /></span>
-        <b>{title}</b>
-        <p>{text}</p>
-        <p className="kind-problem"><em>Закрывает</em>{problem}</p>
-        <span className="kind-demo">
-          <span className="bot">{demo[0]}</span>
-          <span className="me">{demo[1]}</span>
-        </span>
-        <span className="kind-go">{ready ? "Взять сценарий" : "Собрать с нуля"} <ArrowRight size={14} /></span>
-      </button>)}
+      {Array.from({ length: COPIES }).flatMap((_, copy) => kinds.map(({ id, icon: Icon, title, text, problem, demo, ready, template }, index) => (
+        <button
+          key={`${copy}-${id}`}
+          className={`kind kind-${id} ${index === active ? "is-active" : ""}`}
+          aria-hidden={copy !== 1}
+          tabIndex={copy === 1 ? 0 : -1}
+          onClick={() => onPick(template)}
+        >
+          <span className="kind-icon"><Icon /></span>
+          <b>{title}</b>
+          <p>{text}</p>
+          <p className="kind-problem"><em>Закрывает</em>{problem}</p>
+          <span className="kind-demo">
+            <span className="bot">{demo[0]}</span>
+            <span className="me">{demo[1]}</span>
+          </span>
+          <span className="kind-go">{ready ? "Взять сценарий" : "Собрать с нуля"} <ArrowRight size={14} /></span>
+        </button>
+      )))}
     </div>
 
     <div className="kind-nav">
-      <button className="rail-arrow" onClick={() => scrollTo(Math.max(0, active - 1))} disabled={active === 0} aria-label="Предыдущая задача"><ChevronLeft size={18} /></button>
-      <div className="rail-dots">{kinds.map((kind, index) => <button key={kind.id} className={index === active ? "on" : ""} onClick={() => scrollTo(index)} aria-label={kind.title} />)}</div>
-      <button className="rail-arrow" onClick={() => scrollTo(Math.min(kinds.length - 1, active + 1))} disabled={active === kinds.length - 1} aria-label="Следующая задача"><ChevronRight size={18} /></button>
+      <button className="rail-arrow" onClick={() => nudge(-1)} aria-label="Предыдущая задача"><ChevronLeft size={18} /></button>
+      <div className="rail-dots">{kinds.map((kind, index) => <button key={kind.id} className={index === active ? "on" : ""} onClick={() => jumpTo(index)} aria-label={kind.title} />)}</div>
+      <button className="rail-arrow" onClick={() => nudge(1)} aria-label="Следующая задача"><ChevronRight size={18} /></button>
     </div>
   </div>;
 }
