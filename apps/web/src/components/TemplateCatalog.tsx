@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, ArrowUpRight, Bot, Check, Search, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { BotFlowDocument } from "../../../../src/domain/bot-flow";
 import { createFlowFromTemplate, type FlowTemplateId } from "../flow-store";
@@ -9,6 +9,8 @@ import { SolutionArtwork } from "./ProductArtwork";
 import "../template-catalog.css";
 
 interface Props { onPick: (id: FlowTemplateId) => void; pending?: boolean; showHeading?: boolean }
+
+const RAIL_GAP = 16;
 
 function ScenarioPreview({ flow, onClose }: { flow: BotFlowDocument; onClose: () => void }) {
   const root = useRef<HTMLDivElement>(null);
@@ -49,75 +51,130 @@ export function TemplateCatalog({ onPick, pending = false, showHeading = true }:
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ScenarioCategory>("all");
   const [preview, setPreview] = useState<BotFlowDocument | null>(null);
-  const [position, setPosition] = useState(0);
+  const [active, setActive] = useState(0);
   const [showAll, setShowAll] = useState(false);
-  const [highlighted, setHighlighted] = useState<FlowTemplateId | null>(null);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swiped = useRef(false);
-  const track = useRef<HTMLDivElement>(null);
-  const movement = useRef<{ positions: Map<string, number>; direction: number } | null>(null);
-  const animations = useRef<Animation[]>([]);
+  const rail = useRef<HTMLDivElement>(null);
+  const settle = useRef<number>(undefined);
+  const centred = useRef(0);
+  const adjusting = useRef(false);
   const filtered = useMemo(() => filterScenarios(query, category), [query, category]);
-  const hasNeighbors = filtered.length >= 3;
-  // Position always identifies the central solution, with its previous/next neighbours around it.
-  const visible = showAll ? filtered : Array.from({ length: Math.min(3, filtered.length) }, (_, index) => filtered[(position + index - (hasNeighbors ? 1 : 0) + filtered.length) % filtered.length]!);
-  const focusedId = highlighted ?? filtered[position]?.id;
-  // FLIP preserves the two shared cards and slides the incoming card from beyond the edge.
-  // Animate translate independently of the hover scale; reduced-motion gets an instant change.
-  useLayoutEffect(() => {
-    const change = movement.current;
-    movement.current = null;
-    if (!change || showAll || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const slots = Array.from(track.current?.querySelectorAll<HTMLElement>(".tcard-slot") ?? []);
-    const step = slots.length > 1 ? slots[1]!.offsetLeft - slots[0]!.offsetLeft : 0;
-    animations.current = slots.map((slot) => {
-      const x = slot.getBoundingClientRect().left;
-      const dx = (change.positions.get(slot.dataset.id!) ?? x + change.direction * step) - x;
-      return slot.animate([{ translate: `${dx}px 0` }, { translate: "0px 0" }], { duration: 360, easing: "cubic-bezier(.22,.68,0,1)" });
-    });
-  }, [position, showAll, filtered]);
-  useEffect(() => () => animations.current.forEach((animation) => animation.cancel()), []);
-  function stopMovement() { movement.current = null; animations.current.forEach((animation) => animation.cancel()); }
-  function resetView() { stopMovement(); setPosition(0); setShowAll(false); setHighlighted(null); }
-  function reset() { setQuery(""); setCategory("all"); resetView(); }
+  // Three identical copies make the rail endless: once the scroll settles we
+  // jump a whole copy back or forward, so it never reaches an end either way.
+  const copies = filtered.length >= 3 ? 3 : 1;
+
+  const metrics = () => {
+    const element = rail.current;
+    const card = element?.firstElementChild as HTMLElement | null;
+    if (element == null || card == null || card.offsetWidth === 0 || filtered.length === 0) return null;
+    const step = card.offsetWidth + RAIL_GAP;
+    return { element, step, set: step * filtered.length };
+  };
+
+  const recenter = () => {
+    const found = metrics();
+    if (found === null || copies === 1) return;
+    const { element, set } = found;
+    if (element.scrollLeft < set * 0.5) element.scrollLeft += set;
+    else if (element.scrollLeft > set * 1.5) element.scrollLeft -= set;
+  };
+
+  const sync = () => {
+    if (adjusting.current) return; // a correction of our own, not the reader scrolling
+    const found = metrics();
+    if (found === null) return;
+    const { element, step } = found;
+    const centre = element.scrollLeft + element.clientWidth / 2;
+    const index = Math.round((centre - step / 2) / step);
+    centred.current = ((index % filtered.length) + filtered.length) % filtered.length;
+    setActive(centred.current);
+    clearTimeout(settle.current);
+    settle.current = window.setTimeout(recenter, 160);
+  };
+
+  /** Where the rail must stand for card `index` of `base` copy to sit in the middle. */
+  const offsetFor = (element: HTMLElement, step: number, base: number, index: number) =>
+    base + index * step + step / 2 - element.clientWidth / 2;
+
+  // A new filter rebuilds the rail, so the scroll goes back to the middle copy.
+  useEffect(() => {
+    const found = metrics();
+    if (found !== null) found.element.scrollLeft = offsetFor(found.element, found.step, copies === 1 ? 0 : found.set, 0);
+    centred.current = 0;
+    setActive(0);
+    return () => clearTimeout(settle.current);
+  }, [query, category, showAll]);
+
+  // A resize — rotation, a window drag, a browser re-snapping after a layout
+  // change — moves the middle of the viewport, so the rail is re-aimed at the
+  // card that was centred before it.
+  useEffect(() => {
+    const element = rail.current;
+    if (element === null) return;
+    // The browser re-snaps after its own layout pass, so the correction is
+    // applied again on the next frame to land after it.
+    const reaim = () => {
+      const apply = () => {
+        const found = metrics();
+        if (found === null) return;
+        // Always land back in the middle copy: the loop then still runs both ways.
+        element.scrollLeft = offsetFor(element, found.step, copies === 1 ? 0 : found.set, centred.current);
+      };
+      adjusting.current = true;
+      apply();
+      requestAnimationFrame(() => { apply(); requestAnimationFrame(() => { adjusting.current = false; }); });
+    };
+    const observer = new ResizeObserver(reaim);
+    observer.observe(element);
+    addEventListener("resize", reaim);
+    return () => { observer.disconnect(); removeEventListener("resize", reaim); };
+  }, [copies, showAll]);
+
   function shift(direction: -1 | 1) {
-    if (filtered.length <= 1 || showAll) return;
-    movement.current = { direction, positions: new Map(Array.from(track.current?.querySelectorAll<HTMLElement>(".tcard-slot") ?? []).map((slot) => [slot.dataset.id!, slot.getBoundingClientRect().left])) };
-    animations.current.forEach((animation) => animation.cancel());
-    setPosition((value) => (value + direction + filtered.length) % filtered.length);
-    setHighlighted(null);
+    const found = metrics();
+    if (found === null) return;
+    found.element.scrollBy({ left: found.step * direction, behavior: "smooth" });
   }
-  function toggleAll() {
-    stopMovement();
-    setShowAll((value) => !value);
-    setHighlighted(null);
+
+  function jumpTo(index: number) {
+    const found = metrics();
+    if (found === null) return;
+    const { element, step, set } = found;
+    const base = copies === 1 ? 0 : Math.floor((element.scrollLeft + element.clientWidth / 2) / set) * set;
+    element.scrollTo({ left: offsetFor(element, step, base, index), behavior: "smooth" });
   }
+
+  function reset() { setQuery(""); setCategory("all"); setShowAll(false); }
+
+  function renderCard(card: ScenarioCard, focused: boolean) {
+    return <article className={`tcard tcard--${card.accent}${focused ? " is-focused" : ""}`}>
+      <button type="button" className="tcard-preview-button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))} aria-label={`Посмотреть сценарий «${card.title}»`}><ScenarioThumbnail card={card} /><span className="tcard-preview-hint">Проверить в чате <ArrowUpRight size={14} /></span></button>
+      <div className="tcard-content"><span className="tcard-format"><Bot size={13} /> Готовый бот <span>{card.nodeCount} шагов</span></span><h3>{card.title}</h3><p className="tcard-outcome">{card.outcome}</p><p>{card.description}</p><div className="tcard-tags">{card.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><details className="tcard-setup"><summary>Что настроить под себя</summary><p className="tcard-details-description">{card.description}</p><ul>{card.setup.map((item) => <li key={item}>{item}</li>)}</ul></details><div className="tcard-actions"><button className="tcard-look" type="button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))}>Посмотреть</button><button className="tcard-use" type="button" disabled={pending} onClick={() => onPick(card.id)}>Использовать <ArrowUpRight size={15} /></button></div></div>
+    </article>;
+  }
+
   return <section className="tcatalog" id="scenarios" aria-labelledby={showHeading ? "tcatalog-title" : undefined} aria-label={showHeading ? undefined : "Каталог готовых сценариев"}>
     {showHeading && <header className="tcatalog-heading"><div><span className="tcatalog-eyebrow">Готовые решения</span><h2 id="tcatalog-title">Выберите бота под свою задачу</h2><p>Ветвления, вопросы и ответы уже собраны. Проверьте решение в чате, замените тексты и контакты — и переходите к запуску.</p></div><span className="tcatalog-free"><Check size={14} /> Без Premium</span></header>}
     <div className="tcatalog-tools">
-      <label className="tcatalog-search"><Search size={18} /><input type="search" value={query} onChange={(event) => { setQuery(event.target.value); resetView(); }} placeholder="Найти сценарий: запись, заявки…" aria-label="Поиск готовых сценариев" />{query !== "" && <button type="button" onClick={() => { setQuery(""); resetView(); }} aria-label="Очистить поиск"><X size={16} /></button>}</label>
-      <div className="tcatalog-filters" aria-label="Категории сценариев">{scenarioCategories.map((item) => <button key={item.id} type="button" aria-pressed={category === item.id} onClick={() => { setCategory(item.id); resetView(); }}>{item.title}<span>{item.id === "all" ? scenarioCards.length : scenarioCards.filter((card) => card.category === item.id).length}</span></button>)}</div>
+      <label className="tcatalog-search"><Search size={18} /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти сценарий: запись, заявки…" aria-label="Поиск готовых сценариев" />{query !== "" && <button type="button" onClick={() => setQuery("")} aria-label="Очистить поиск"><X size={16} /></button>}</label>
+      <div className="tcatalog-filters" aria-label="Категории сценариев">{scenarioCategories.map((item) => <button key={item.id} type="button" aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{item.title}<span>{item.id === "all" ? scenarioCards.length : scenarioCards.filter((card) => card.category === item.id).length}</span></button>)}</div>
     </div>
-    <div className="tcatalog-toolbar"><p className="tcatalog-results" role="status">Показано: {visible.length} из {filtered.length}{filtered.length !== scenarioCards.length ? ` · Всего решений: ${scenarioCards.length}` : ""}</p>
+    <div className="tcatalog-toolbar"><p className="tcatalog-results" role="status">{showAll ? `Показаны все: ${filtered.length}` : `${active + 1} / ${filtered.length}`}{filtered.length !== scenarioCards.length ? ` · Всего решений: ${scenarioCards.length}` : ""}</p>
     {filtered.length > 1 && <div className="tcatalog-pagination">
-      {!showAll && <><button type="button" className="tcatalog-arrow" onClick={() => shift(-1)} aria-label="Предыдущие решения" aria-controls="scenario-cards"><ArrowLeft size={18} /></button><span className="tcatalog-position" aria-live="polite">{position + 1} / {filtered.length}</span><button type="button" className="tcatalog-arrow" onClick={() => shift(1)} aria-label="Следующие решения" aria-controls="scenario-cards"><ArrowRight size={18} /></button></>}
-      <button type="button" onClick={toggleAll} aria-expanded={showAll} aria-controls="scenario-cards">{showAll ? "Вернуть ленту" : `Посмотреть все (${filtered.length})`}</button>
+      {!showAll && <><button type="button" className="tcatalog-arrow" onClick={() => shift(-1)} aria-label="Предыдущее решение" aria-controls="scenario-cards"><ArrowLeft size={18} /></button><button type="button" className="tcatalog-arrow" onClick={() => shift(1)} aria-label="Следующее решение" aria-controls="scenario-cards"><ArrowRight size={18} /></button></>}
+      <button type="button" onClick={() => setShowAll((value) => !value)} aria-expanded={showAll} aria-controls="scenario-cards">{showAll ? "Вернуть ленту" : `Посмотреть все (${filtered.length})`}</button>
     </div>}</div>
-    {filtered.length === 0 ? <div className="tcatalog-empty"><Search size={28} /><h3>Пока ничего не нашлось</h3><p>Попробуйте другое слово или посмотрите все решения.</p><button type="button" onClick={reset}>Сбросить фильтры</button></div> : <div className={showAll ? "tcatalog-window" : "tcatalog-window is-carousel-window"}><div ref={track} className={`tcatalog-grid${showAll ? "" : ` is-carousel${hasNeighbors ? " has-neighbors" : ""}`}`} style={showAll ? undefined : { gridTemplateColumns: `repeat(${Math.min(3, filtered.length)}, minmax(0, 1fr))` }} id="scenario-cards"
-      onPointerLeave={() => setHighlighted(null)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHighlighted(null); }}
-      onTouchStart={(event) => { const touch = event.touches[0]; touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null; swiped.current = false; }}
-      onTouchEnd={(event) => { const start = touchStart.current, end = event.changedTouches[0]; touchStart.current = null; if (!start || !end || showAll) return; const dx = end.clientX - start.x, dy = end.clientY - start.y; if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped.current = true; shift(dx < 0 ? 1 : -1); } }}
-      onTouchCancel={() => { touchStart.current = null; }}
-      onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}
-    >{visible.map((card) => <div className="tcard-slot" data-id={card.id} key={card.id}><article className={`tcard tcard--${card.accent}${showAll || card.id === focusedId ? " is-focused" : ""}`}
-      onPointerEnter={(event) => { if (event.pointerType === "mouse") setHighlighted(card.id); }}
-      onPointerDown={() => setHighlighted(card.id)}
-      onFocusCapture={() => setHighlighted(card.id)}
-    >
-      <button type="button" className="tcard-preview-button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))} aria-label={`Посмотреть сценарий «${card.title}»`}><ScenarioThumbnail card={card} /><span className="tcard-preview-hint">Проверить в чате <ArrowUpRight size={14} /></span></button>
-      <div className="tcard-content"><span className="tcard-format"><Bot size={13} /> Готовый бот <span>{card.nodeCount} шагов</span></span><h3>{card.title}</h3><p className="tcard-outcome">{card.outcome}</p><p>{card.description}</p><div className="tcard-tags">{card.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><details className="tcard-setup"><summary>Что настроить под себя</summary><p className="tcard-details-description">{card.description}</p><ul>{card.setup.map((item) => <li key={item}>{item}</li>)}</ul></details><div className="tcard-actions"><button className="tcard-look" type="button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))}>Посмотреть</button><button className="tcard-use" type="button" disabled={pending} onClick={() => onPick(card.id)}>Использовать <ArrowUpRight size={15} /></button></div></div>
-    </article></div>)}</div></div>}
+    {filtered.length === 0 ? <div className="tcatalog-empty"><Search size={28} /><h3>Пока ничего не нашлось</h3><p>Попробуйте другое слово или посмотрите все решения.</p><button type="button" onClick={reset}>Сбросить фильтры</button></div> : showAll
+      ? <div className="tcatalog-window"><div className="tcatalog-grid" id="scenario-cards">{filtered.map((card) => <div className="tcard-slot" data-id={card.id} key={card.id}>{renderCard(card, true)}</div>)}</div></div>
+      : <div className="tcatalog-rail-wrap">
+          <div className="tcatalog-rail" ref={rail} onScroll={sync} tabIndex={0} role="group" aria-label="Готовые сценарии" id="scenario-cards">
+            {Array.from({ length: copies }).flatMap((_, copy) => filtered.map((card, index) => (
+              <div className="tcard-slot" data-id={`${copy}-${card.id}`} key={`${copy}-${card.id}`} aria-hidden={copies > 1 && copy !== 1} inert={copies > 1 && copy !== 1 ? true : undefined}>
+                {renderCard(card, index === active)}
+              </div>
+            )))}
+          </div>
+          <div className="tcatalog-dots">{filtered.map((card, index) => <button key={card.id} type="button" className={index === active ? "on" : ""} onClick={() => jumpTo(index)} aria-label={card.title} />)}</div>
+        </div>}
     <p className="tcatalog-note">Решения состоят из настоящих редактируемых цепочек KIRA. Обложки объясняют задачу, а кнопка «Посмотреть» запускает рабочий диалог. Записи, заказы и заявки подтверждает ваша команда — без обещаний неподключённых оплат, CRM и автоматических рассылок.</p>
     {preview !== null && <ScenarioPreview flow={preview} onClose={() => setPreview(null)} />}
   </section>;

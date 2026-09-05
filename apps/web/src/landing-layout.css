@@ -52,7 +52,11 @@
   .landing .hero { grid-template-columns: 1fr; padding: 24px 18px 30px; gap: 22px; }
   .landing .hero h1 { font-size: clamp(27px, 7.4vw, 34px); }
   .landing .hero .build-loop { order: 0; }
-  .landing .hero .build-loop.tall video { aspect-ratio: 4 / 5; max-height: 320px; object-fit: contain; }
+  /* the tall cut fills the phone: cropping beats letterboxing at this size */
+  .landing .hero .build-loop.tall { margin-inline: -18px; }
+  .landing .hero .build-loop.tall video { aspect-ratio: 4 / 5; max-height: none; object-fit: cover; border-radius: 18px; }
+  .landing .hero .build-loop.tall .loop-title,
+  .landing .hero .build-loop.tall .loop-steps { padding-inline: 18px; }
   .landing .hero > .price-summary { padding: 14px; }
   .landing .hero .price-summary-items { grid-template-columns: 1fr; gap: 12px; }
   .landing .hero .price-summary-items > span { display: grid; grid-template-columns: 112px 1fr; align-items: center; font-size: 13px; }

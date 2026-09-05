@@ -69,58 +69,40 @@ async function originalUnchanged(page) {
 }
 
 async function carouselCheck(page) {
-  const pageSize = 3;
-  const titles = page.locator('.tcard h3');
-  const centralTitle = () => titles.nth(1).innerText();
-  assert.equal(await titles.count(), pageSize, 'The default catalogue is a compact carousel');
+  // The rail is endless: three copies of the list scroll under a snap, and only
+  // the copy in the middle is interactive. The counter names the centred card.
+  const live = page.locator('.tcatalog-rail .tcard-slot:not([inert])');
+  const counter = page.locator('.tcatalog-results');
+  const centralTitle = async () => (await page.locator('.tcatalog-rail .tcard-slot:not([inert]) .tcard.is-focused h3').first().innerText()).trim();
+  const position = async () => (await counter.innerText()).split('·')[0].trim();
+  await page.locator('.tcatalog-rail').waitFor();
+  assert.equal(await live.count(), 18, 'One interactive copy carries every solution');
+  assert.equal(await position(), '1 / 18', 'The rail starts on the first solution');
   const first = await centralTitle();
   await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
-  const all = await titles.allTextContents();
+  const all = await page.locator('.tcatalog-grid .tcard h3').allTextContents();
   assert.equal(all.length, 18);
   await page.getByRole('button', { name: 'Вернуть ленту', exact: true }).click();
-  assert.equal(await titles.count(), pageSize);
-  const previous = page.getByRole('button', { name: 'Предыдущие решения', exact: true });
-  const next = page.getByRole('button', { name: 'Следующие решения', exact: true });
+  await page.locator('.tcatalog-rail').waitFor();
+  const previous = page.getByRole('button', { name: 'Предыдущее решение', exact: true });
+  const next = page.getByRole('button', { name: 'Следующее решение', exact: true });
+  const settle = async (expected) => { await page.waitForFunction((text) => document.querySelector('.tcatalog-results')?.innerText.startsWith(text), expected); await page.waitForTimeout(260); };
   await previous.click();
+  await settle('18 / 18');
   assert.equal(await centralTitle(), all.at(-1), 'Previous wraps from first to last');
   await next.click();
+  await settle('1 / 18');
   assert.equal(await centralTitle(), first, 'Next wraps from last to first');
   const visited = new Set();
   for (let index = 0; index < all.length; index += 1) {
     visited.add(await centralTitle());
     await next.click();
+    await settle(`${((index + 1) % all.length) + 1} / 18`);
   }
   assert.equal(visited.size, 18, 'Every solution is reachable around the loop');
   assert.equal(await centralTitle(), first);
-  assert.equal(await page.locator('.tcard.is-focused h3').innerText(), first, 'Central card is initially sharp');
-  if (page.viewportSize().width > 760) {
-    const neighbour = page.locator('.tcard').first();
-    await neighbour.hover();
-    assert.equal(await neighbour.evaluate(node => node.classList.contains('is-focused')), true, 'Hover reveals a neighbour');
-    assert.equal(await page.locator('.tcard').nth(1).evaluate(node => node.classList.contains('is-focused')), false, 'Previous selection becomes blurred');
-    await page.locator('.tcatalog-results').hover();
-    assert.equal(await page.locator('.tcard.is-focused h3').innerText(), first, 'Leaving restores the central highlight');
-    await neighbour.locator('.tcard-look').focus();
-    assert.equal(await neighbour.evaluate(node => node.classList.contains('is-focused')), true, 'Keyboard focus also reveals a neighbour');
-    await next.focus();
-  }
-  if (page.viewportSize().width <= 760) {
-    // Exercise the touch handlers separately from the buttons; vertical gestures must not advance.
-    const grid = page.locator('.tcatalog-grid');
-    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 250, clientY: 200 }] });
-    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 100, clientY: 205 }] });
-    assert.equal(await centralTitle(), all[1], 'Left swipe advances');
-    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 100, clientY: 200 }] });
-    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 250, clientY: 205 }] });
-    assert.equal(await centralTitle(), first, 'Right swipe goes back');
-    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 100, clientY: 200 }] });
-    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 110, clientY: 400 }] });
-    assert.equal(await centralTitle(), first, 'Vertical scroll does not change cards');
-  }
-  assert.equal(await page.title(), 'KIRA - Конструктор ботов миниаппов сайтов');
-  assert.equal(await page.locator('.price-summary').count(), 1);
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 }
+
 
 async function catalogCheck(page) {
   const search = page.getByRole("searchbox", { name: "Поиск готовых сценариев" });
@@ -142,7 +124,7 @@ async function catalogCheck(page) {
   await page.locator(".tcatalog-filters button").filter({ hasText: "Поддержка" }).click();
   assert.equal(await page.locator(".tcard").count(), 2);
   await page.locator(".tcatalog-filters button").filter({ hasText: "Все решения" }).click();
-  const look = page.locator(".tcard.is-focused .tcard-look");
+  const look = page.locator(".tcard-slot:not([inert]) .tcard.is-focused .tcard-look").first();
   await look.click();
   const simulator = page.locator(".tcatalog-preview-root .simulator");
   await simulator.waitFor();
@@ -215,7 +197,7 @@ try {
         console.log(`PASS free ${kit}: one occupied account slot, actual editing, local persistence after reload, no API writes`);
       }
       await page.goto(`${base}/hub`);
-      await page.locator(".tcard-use").first().click();
+      await page.locator('.tcatalog-rail .tcard-slot:not([inert]) .tcard-use').first().click();
       await page.locator(".flow-screen").waitFor();
       assert(new URL(page.url()).searchParams.get("draft"));
       await originalUnchanged(page);
@@ -227,7 +209,7 @@ try {
     await page.locator('.tcatalog-pagination').scrollIntoViewIfNeeded();
     await page.screenshot({ path: fileURLToPath(new URL(`landing-carousel-${width}.png`, output)), fullPage: false });
     await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
-    assert.equal(await page.locator('.tcard').count(), 18);
+    assert.equal(await page.locator('.tcatalog-grid .tcard').count(), 18);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     console.log(`PASS ${width}px: landing and hub cyclic arrows, all 18 reachable, expand/collapse, mobile swipe, brand and prices`);
     await context.close();

@@ -31,23 +31,21 @@ try {
     if (width === 768) assert(metrics.video.top < metrics.price.top, 'Tablet video does not drop below prices');
     await page.screenshot({ path: fileURLToPath(new URL(`compact-hero-${width}.png`, output)) });
     await page.evaluate(() => document.getElementById('kinds').scrollIntoView({ behavior: 'instant' }));
-    const card = await page.locator('.tcard.is-focused').boundingBox();
+    const card = await page.locator('.tcard-slot:not([inert]) .tcard.is-focused').first().boundingBox();
     if (width >= 1200) {
       assert(card.height < 460, `Compact card at ${width}: ${card.height}`);
       assert(card.y + card.height <= height, `Card actions fit viewport at ${width}: ${card.y + card.height}`);
     }
     await page.screenshot({ path: fileURLToPath(new URL(`compact-carousel-${width}.png`, output)) });
-    const sliding = await page.evaluate(async () => {
-      document.querySelector('[aria-label="Следующие решения"]').click();
-      await new Promise(requestAnimationFrame);
-      return document.querySelector('.tcatalog-grid').getAnimations({ subtree: true }).filter(a => a.effect.getKeyframes().some(k => k.translate)).length;
-    });
-    assert(sliding > 0, 'Real positional animation runs between cards');
-    await page.evaluate(() => Promise.all(document.querySelector('.tcatalog-grid').getAnimations({ subtree: true }).map(a => a.finished.catch(() => {}))));
+    // The rail moves by scrolling, so movement is measured on the rail itself.
+    const before = await page.locator('.tcatalog-rail').evaluate((node) => node.scrollLeft);
+    await page.getByRole('button', { name: 'Следующее решение', exact: true }).click();
+    await page.waitForFunction((from) => Math.abs(document.querySelector('.tcatalog-rail').scrollLeft - from) > 40, before);
+    await page.waitForTimeout(400);
     await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
-    assert.equal(await page.locator('.tcard').count(), 18);
+    assert.equal(await page.locator('.tcatalog-grid .tcard').count(), 18);
     if (width <= 480) assert.equal(await page.locator('.tcatalog-grid').evaluate(e => getComputedStyle(e).gridTemplateColumns.split(' ').length), 1);
-    console.log(`PASS ${width}x${height}: hero, prices, compact cards, sliding animation, expanded layout`);
+    console.log(`PASS ${width}x${height}: hero, prices, compact cards, rail scrolls, expanded layout`);
     await context.close();
   }
   const context = await browser.newContext({ reducedMotion: 'reduce' });
@@ -58,8 +56,8 @@ try {
   await page.getByRole('button', { name: 'Приостановить видео' }).waitFor();
   await page.getByRole('button', { name: 'Приостановить видео' }).click();
   assert(await page.locator('.hero video').evaluate(e => e.paused), 'Explicit pause works');
-  await page.getByRole('button', { name: 'Следующие решения' }).click();
-  assert.equal(await page.locator('.tcatalog-grid').evaluate(e => e.getAnimations({ subtree: true }).filter(a => a.effect.getKeyframes().some(k => k.translate)).length), 0);
-  console.log('PASS reduced motion: no slide animation, video can be explicitly played and paused');
+  await page.getByRole('button', { name: 'Следующее решение', exact: true }).click();
+  assert.equal(await page.locator('.tcatalog-rail .tcard').first().evaluate((node) => getComputedStyle(node).transitionDuration), '0s', 'Reduced motion drops the focus transition');
+  console.log('PASS reduced motion: no card transition, video can be explicitly played and paused');
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }
