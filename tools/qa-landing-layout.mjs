@@ -18,6 +18,7 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base);
     await page.evaluate(() => document.fonts.ready);
+    assert(await page.locator('#pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('kinds')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Costs precede solutions on the landing');
     const metrics = await page.evaluate(() => {
       const box = s => document.querySelector(s).getBoundingClientRect().toJSON();
       return { hero: box('.hero'), video: box('.hero video'), price: box('.hero .price-summary'), title: box('.hero h1'), priceFont: parseFloat(getComputedStyle(document.querySelector('.hero .price-summary strong')).fontSize), overflow: document.documentElement.scrollWidth > innerWidth };
@@ -59,5 +60,23 @@ try {
   await page.getByRole('button', { name: 'Следующее решение', exact: true }).click();
   assert.equal(await page.locator('.tcatalog-rail .tcard').first().evaluate((node) => getComputedStyle(node).transitionDuration), '0s', 'Reduced motion drops the focus transition');
   console.log('PASS reduced motion: no card transition, video can be explicitly played and paused');
+  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  const hub = await mobile.newPage();
+  hub.on('pageerror', error => errors.push(error.message));
+  await hub.goto(`${base}/hub`);
+  await hub.evaluate(() => document.fonts.ready);
+  const video = hub.locator('#hub-video video');
+  assert(await video.evaluate(node => node.paused), 'Hub reduced motion starts on the poster');
+  const box = await video.boundingBox();
+  assert(box.width >= 388 && box.height >= 468, 'Hub instruction fills the phone in 4:5');
+  assert(await hub.locator('#hub-pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('hub-templates')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+  assert.equal(await hub.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await hub.screenshot({ path: fileURLToPath(new URL('first-visit-hub-390.png', output)) });
+  await hub.getByRole('button', { name: 'Смотреть видеоинструкцию', exact: true }).click();
+  await hub.waitForFunction(() => { const v = document.querySelector('#hub-video video'); return !v.paused && v.readyState >= 2; });
+  await hub.getByRole('button', { name: 'Приостановить видео', exact: true }).click();
+  assert(await video.evaluate(node => node.paused), 'The big poster button really plays the video, and pause works');
+  console.log('PASS first-visit mobile hub: prices before solutions, full-width video, poster playback and pause');
+  await mobile.close();
   assert.deepEqual(errors, []);
 } finally { await browser.close(); }

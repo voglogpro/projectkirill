@@ -4,9 +4,10 @@ import type { ProductKit } from "../types";
 import { TemplateCatalog } from "./TemplateCatalog";
 import { ConstructorArtwork } from "./ProductArtwork";
 import { PriceSummary } from "./PriceSummary";
+import { InstructionVideo } from "./InstructionVideo";
 import "../start-hub.css";
 
-type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string };
+type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string; price: 350 | 650 };
 
 const hostingPlans: ReadonlyArray<{ kit: ProductKit; plan: "solo" | "trio" | "studio"; title: string; price: number; detail: string; icon: typeof Bot }> = [
   { kit: "bot", plan: "solo", title: "Один текстовый бот", price: 350, detail: "1 бот · сообщения и цепочки", icon: MessageSquareText },
@@ -16,10 +17,10 @@ const hostingPlans: ReadonlyArray<{ kit: ProductKit; plan: "solo" | "trio" | "st
 ];
 
 const kits: readonly Kit[] = [
-  { id: "bot", icon: MessageSquareText, title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hosting: "Сценарий в Telegram" },
-  { id: "bot-app", icon: Smartphone, title: "Бот и Mini App", description: "Бот и приложение с каталогом, карточками и формами.", hosting: "Бот + приложение" },
-  { id: "bot-app-site", icon: LayoutGrid, title: "Бот, Mini App и сайт", description: "Один проект в Telegram и по ссылке в браузере.", hosting: "Бот + приложение + сайт" },
-  { id: "site", icon: Globe, title: "Только сайт", description: "Страница из блоков с предпросмотром в браузере.", hosting: "Страница проекта" },
+  { id: "bot", icon: MessageSquareText, title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hosting: "Сценарий в Telegram", price: 350 },
+  { id: "bot-app", icon: Smartphone, title: "Бот и Mini App", description: "Бот и приложение с каталогом, карточками и формами.", hosting: "Бот + приложение", price: 650 },
+  { id: "bot-app-site", icon: LayoutGrid, title: "Бот, Mini App и сайт", description: "Один проект в Telegram и по ссылке в браузере.", hosting: "Бот + приложение + сайт", price: 650 },
+  { id: "site", icon: Globe, title: "Только сайт", description: "Страница из блоков с предпросмотром в браузере.", hosting: "Страница проекта", price: 350 },
 ];
 
 type StartHubProps = {
@@ -44,17 +45,19 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
     </header>
     <div className="hub-v2-content">
       <section className="hub-v2-guide" aria-labelledby="hub-guide-title">
-        <div className="hub-v2-heading">
-          <span className="hub-v2-eyebrow">ВАШ ПУТЬ К ЗАПУСКУ</span>
-          <h1 id="hub-guide-title">{userName ? `Привет, ${userName}!` : "Добро пожаловать в KIRA"}</h1>
-          <p>Начните с конструктора или готового сценария. Собрать и проверить можно бесплатно.</p>
+        <div className="hub-v2-intro">
+          <div className="hub-v2-heading">
+            <span className="hub-v2-eyebrow">KIRA · КОНСТРУКТОР БЕЗ КОДА</span>
+            <h1 id="hub-guide-title">Создайте бота,<br />Mini App или сайт</h1>
+            <p>{userName ? `${userName}, соберите` : "Соберите"} и проверьте бесплатно. Оплата — только за запуск для клиентов.</p>
+          </div>
+          <PriceSummary href="#hub-pricing" />
+          <div className="hub-v2-intro-actions">
+            <a className="hub-v2-start" href="#hub-constructors">Выбрать конструктор <ArrowRight size={17} /></a>
+            <a href="#hub-video">Как это работает · 21 сек</a>
+          </div>
         </div>
-        <PriceSummary href="#hub-pricing" />
-        <ol className="hub-v2-steps">
-          <li><span>01</span><div><h2>Выберите основу</h2><p>Текстовый бот, Mini App или сайт. Либо готовый сценарий ниже.</p></div></li>
-          <li><span>02</span><div><h2>Соберите и проверьте</h2><p>Меняйте тексты и блоки, проверяйте результат в предпросмотре. Без Premium.</p></div></li>
-          <li><span>03</span><div><h2>Запустите для клиентов</h2><p>Добавьте токен из <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">@BotFather</a>. Тариф понадобится при публикации.</p></div></li>
-        </ol>
+        <InstructionVideo id="hub-video" />
       </section>
 
       {projects.length > 0 && <section className="hub-v2-section" aria-labelledby="hub-projects-title">
@@ -71,29 +74,22 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
       <section className="hub-v2-section" id="hub-constructors" aria-labelledby="hub-constructors-title">
         <div className="hub-v2-heading">
           <span className="hub-v2-eyebrow">КОНСТРУКТОРЫ</span>
-          <h2 id="hub-constructors-title">Какой конструктор вы можете выбрать</h2>
-          <p>Все четыре доступны бесплатно. Пробуйте — существующий проект не изменится.</p>
+          <h2 id="hub-constructors-title">Что хотите создать?</h2>
+          <p>Нажмите на вариант — откроется бесплатный редактор.</p>
         </div>
         <div className="hub-v2-kit-grid">
-          {kits.map(({ id, title, description }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
+          {kits.map(({ id, title, description, price }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
             <span className="hub-v2-kit-top"><span>Бесплатный редактор</span></span>
             <ConstructorArtwork kit={id} />
             <h3>{title}</h3><p>{description}</p>
-            <span className="hub-v2-kit-cta">Попробовать <ArrowRight size={17} /></span>
+            <small className="hub-v2-kit-hosting">Запуск — {price} ₽/мес</small>
+            <span className="hub-v2-kit-cta">Собрать бесплатно <ArrowRight size={17} /></span>
           </button>)}
         </div>
         <p className="hub-v2-free"><Check size={16} />Карта и Premium не нужны. Оплата — только за запуск и хостинг.</p>
         {pending && <p className="hub-v2-status" role="status">Открываем конструктор…</p>}
       </section>
 
-      <section className="hub-v2-section" id="hub-templates" aria-labelledby="hub-templates-title">
-        <div className="hub-v2-heading">
-          <span className="hub-v2-eyebrow">ГОТОВЫЕ РЕШЕНИЯ</span>
-          <h2 id="hub-templates-title">Ваш бизнес. Уже собранный бот.</h2>
-          <p>Выберите задачу, проверьте бота в чате и поменяйте тексты под себя. Цепочки действий уже связаны — не нужно начинать с пустого холста.</p>
-        </div>
-        <TemplateCatalog onPick={onTemplate} pending={pending} showHeading={false} />
-      </section>
 
       <section className="hub-v2-section hub-v2-pricing" id="hub-pricing" aria-labelledby="hub-pricing-title">
         <div className="hub-v2-heading">
@@ -112,6 +108,15 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
         </div>
         <p className="hub-v2-pricing-note">Пакет за 650 ₽ для трёх ботов подходит только текстовым ботам. Mini App и полный комплект — 650 ₽ за один проект; добавление сайта к Mini App цену не меняет. Кнопки открывают редактор без списания денег.</p>
       </section>
+      <section className="hub-v2-section" id="hub-templates" aria-labelledby="hub-templates-title">
+        <div className="hub-v2-heading">
+          <span className="hub-v2-eyebrow">ГОТОВЫЕ РЕШЕНИЯ</span>
+          <h2 id="hub-templates-title">Начните с готового решения</h2>
+          <p>Листайте, проверяйте в чате и выбирайте «Использовать».</p>
+        </div>
+        <TemplateCatalog onPick={onTemplate} pending={pending} showHeading={false} />
+      </section>
+
       <footer className="hub-v2-footer">KIRA · От идеи до работающего проекта</footer>
     </div>
   </main>;

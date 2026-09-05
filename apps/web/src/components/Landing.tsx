@@ -1,9 +1,10 @@
 import { ArrowRight, Bot, Check, Globe, MessageSquareText, Rocket, Smartphone, Sparkles, Wrench } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import type { FlowTemplateId } from "../flow-store";
 import { TemplateCatalog } from "./TemplateCatalog";
 import type { PaidBillingPlanCode } from "../pricing";
 import { PriceSummary } from "./PriceSummary";
+import { InstructionVideo } from "./InstructionVideo";
 import "../landing-layout.css";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: PaidBillingPlanCode };
@@ -41,7 +42,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>Конструктор ботов миниаппов сайтов</small></span></a>
       <nav aria-label="Навигация по странице">
         <a href="#pieces">Что входит</a>
-        <a href="#kinds">Что можно собрать</a>
+        <a href="#kinds">Готовые решения</a>
         <a href="#pricing">Тарифы</a>
         <a href="#faq">Вопросы</a>
         <button className="nav-service" onClick={onService}><Wrench size={15} /> Бот под ключ</button>
@@ -55,22 +56,20 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     <main>
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><Sparkles size={15} /> БОТ · MINI APP · САЙТ В ОДНОМ КАБИНЕТЕ</div>
-          <h1>Ваш бот.<br /><em>Ваш Mini App.<br />Без кода.</em></h1>
-          <p>Для заявок, записи и продаж. Возьмите готовый сценарий или соберите свой — бот, Mini App и сайт в одном кабинете.</p>
+          <div className="eyebrow"><Sparkles size={15} /> KIRA · КОНСТРУКТОР БЕЗ КОДА</div>
+          <h1>Боты, Mini App<br /><em>и сайты без кода</em></h1>
+          <p>Выберите основу, настройте под себя и запустите. Всё в одном кабинете — без программирования.</p>
           <div className="hero-mobile-price"><span>Один бот <strong>350 ₽/мес</strong></span><span>С Mini App <strong>650 ₽/мес</strong></span><a href="#pricing">Все тарифы →</a></div>
           <div className="hero-actions">
             <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
-            <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
+            <a className="text-link" href="#intro-video">Как это работает · 21 сек</a>
           </div>
           <ul className="hero-chips">
-            <li><Check size={14} /> Без кода</li>
-            <li><Check size={14} /> Без карты на старте</li>
-            <li><Check size={14} /> Хостинг внутри</li>
-            <li><Check size={14} /> Лимита подписчиков нет</li>
+            <li><Check size={14} /> Сборка и проверка — бесплатно</li>
+            <li><Check size={14} /> Оплата только за запуск</li>
           </ul>
         </div>
-        <BuildLoop />
+        <InstructionVideo id="intro-video" />
         <PriceSummary href="#pricing" />
       </section>
 
@@ -88,10 +87,6 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
         <p className="piece-link"><Rocket size={15} /> Связаны между собой: бот открывает Mini App кнопкой меню, а сайт — те же экраны по ссылке. Поменяли текст в кабинете — поменялось везде.</p>
       </section>
 
-      <section className="kinds" id="kinds">
-        <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Выберите задачу для своего бота</h2><p>Посмотрите, как отвечает бот, и возьмите сценарий за основу бесплатно.</p></div>
-        <TemplateCatalog showHeading={false} onPick={(template) => onStart({ templateId: template })} />
-      </section>
 
       <section className="how" id="how">
         <div className="section-heading"><span>КАК ЭТО РАБОТАЕТ</span><h2>Три шага до бота в Telegram</h2></div>
@@ -118,6 +113,11 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
           <p>Вы рассказываете про своё дело, мы пишем сценарий, собираем и запускаем. Кабинет остаётся вам.</p>
         </div>
         <button className="cta-light" onClick={onService}>Посмотреть, что входит <ArrowRight /></button>
+      </section>
+
+      <section className="kinds" id="kinds">
+        <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Выберите задачу для своего бота</h2><p>Посмотрите, как отвечает бот, и возьмите сценарий за основу бесплатно.</p></div>
+        <TemplateCatalog showHeading={false} onPick={(template) => onStart({ templateId: template })} />
       </section>
 
       <section className="faq" id="faq">
@@ -150,65 +150,6 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
   </div>;
 }
 
-/** Silent demonstration with explicit pause and reduced-motion support. */
-function BuildLoop() {
-  const video = useRef<HTMLVideoElement>(null);
-  const [paused, setPaused] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const [playing, setPlaying] = useState(false);
-  const tall = useTallFrame();
-
-  useEffect(() => {
-    const element = video.current;
-    if (element === null) return;
-    element.muted = true; // React does not reflect the attribute, and autoplay needs it
-    if (paused) { element.pause(); return; }
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) void element.play().catch(() => { /* the poster stays */ });
-        else element.pause();
-      }
-    }, { threshold: 0.25 });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [paused, tall]);
-
-  return <figure className={`build-loop ${tall ? "tall" : ""}`}>
-    <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em><button type="button" className="loop-toggle" onClick={() => { setPaused(playing); if (playing) video.current?.pause(); else void video.current?.play().catch(() => { /* Allow another explicit attempt. */ }); }} aria-label={playing ? "Приостановить видео" : "Воспроизвести видео"}>{playing ? "Пауза" : "Смотреть"}</button></figcaption>
-    <span className="loop-glow" aria-hidden="true" />
-    <video
-      // A 16:9 frame on a phone is a stamp. The same story is cut 4:5 for
-      // narrow screens, and the key forces a real reload when that flips.
-      key={tall ? "tall" : "wide"}
-      ref={video}
-      poster={tall ? "/media/kira-build-tall-poster.jpg" : "/media/kira-build-poster.jpg"}
-      muted
-      loop
-      playsInline
-      autoPlay={!paused}
-      onPlay={() => setPlaying(true)}
-      onPause={() => setPlaying(false)}
-      preload="metadata"
-      aria-label="Как в KIRA собирается бот и Mini App"
-    >
-      <source src={tall ? "/media/kira-build-tall.webm" : "/media/kira-build.webm"} type="video/webm" />
-      <source src={tall ? "/media/kira-build-tall.mp4" : "/media/kira-build.mp4"} type="video/mp4" />
-    </video>
-    <p className="loop-steps"><Rocket size={14} /> Собрали сценарий → проверили в чате → добавили Mini App → запустили</p>
-  </figure>;
-}
-
-/** Below this width the wide cut is unreadable, so the tall one plays instead. */
-function useTallFrame(): boolean {
-  const query = "(max-width: 720px)";
-  const [tall, setTall] = useState(() => matchMedia(query).matches);
-  useEffect(() => {
-    const media = matchMedia(query);
-    const sync = () => setTall(media.matches);
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-  return tall;
-}
 
 function Price({ name, price, suffix, description, items, action, featured, onClick }: { name: string; price: string; suffix?: string; description: string; items: string[]; action: string; featured?: boolean; onClick: () => void }) {
   return <article className={`price-card ${featured ? "featured" : ""}`}>{featured && <div className="popular">ПОПУЛЯРНЫЙ</div>}<h3>{name}</h3><div className="price">{price}<small>{suffix}</small></div><p>{description}</p><ul>{items.map((item) => <li key={item}><Check />{item}</li>)}</ul><button className={featured ? "primary-button" : "outline-button"} onClick={onClick}>{action}</button></article>;

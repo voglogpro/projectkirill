@@ -137,7 +137,7 @@ async function catalogCheck(page) {
 }
 
 try {
-  for (const [width, height] of [[1440, 1000], [390, 844], [320, 720]]) {
+  for (const [width, height] of [[1440, 1000], [390, 844], [320, 720]].filter(([width]) => !process.env.KIRA_QA_WIDTH || width === Number(process.env.KIRA_QA_WIDTH))) {
     const { page, context } = await open(width, height);
     const columns = width > 900 ? 4 : 2;
     for (const grid of [".hub-v2-kit-grid", ".hub-v2-price-grid"]) {
@@ -146,7 +146,26 @@ try {
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `No horizontal overflow at ${width}px`);
     assert.equal(await page.locator(".hub-v2-content > section").first().getAttribute("class"), "hub-v2-guide");
-    assert.equal(await page.locator(".hub-v2-content > section").last().getAttribute("id"), "hub-pricing");
+    assert.equal(await page.locator(".hub-v2-content > section").last().getAttribute("id"), "hub-templates");
+    assert.equal(await page.locator('#hub-video video').count(), 1, 'The hub has the shared video instruction');
+    const startButton = await page.locator('.hub-v2-start').boundingBox();
+    assert(startButton.y + startButton.height <= height, 'The initial screen has a visible next action');
+    if (width < 600) {
+      const videoBox = await page.locator('#hub-video video').boundingBox();
+      assert(videoBox.width >= width - 2, 'The vertical video fills the phone width');
+      assert(videoBox.height >= width * 1.2, 'The instruction is not a miniature letterboxed video');
+      assert.match(await page.locator('#hub-video video source').first().getAttribute('src'), /tall/);
+    }
+    await page.locator('.hub-v2-intro-actions a[href="#hub-video"]').click();
+    // Wait for the smooth anchor to arrive, not merely for the video's first pixel to enter.
+    await page.waitForFunction(() => { const video = document.getElementById('hub-video'); const target = parseFloat(getComputedStyle(video).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop); return Math.abs(video.getBoundingClientRect().top - target) < 3; });
+    await page.waitForFunction(() => document.querySelector('#hub-video video').readyState >= 2);
+    if (await page.locator('#hub-video video').evaluate(video => video.paused)) await page.getByRole('button', { name: 'Воспроизвести видео', exact: true }).click();
+    await page.getByRole('button', { name: 'Приостановить видео', exact: true }).click();
+    assert(await page.locator('#hub-video video').evaluate(video => video.paused), 'Hub video plays and pauses');
+    assert(await page.locator('#hub-pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('hub-templates')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Hosting costs precede ready solutions');
+    await page.locator('.hub-v2-start').click();
+    await page.waitForFunction(() => document.getElementById('hub-constructors').getBoundingClientRect().top < innerHeight);
     await page.locator('.hub-v2-header a[href="#hub-pricing"]').click();
     await page.waitForFunction(() => { const box = document.getElementById("hub-pricing").getBoundingClientRect(); return box.top < innerHeight && box.bottom > 0; });
     // Wait for the anchor's smooth scroll to settle before capturing its destination.
@@ -204,6 +223,7 @@ try {
       console.log("PASS template Use opens an isolated editable scenario without an API write");
     }
     await page.goto(base);
+    assert(await page.locator('#pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('kinds')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Landing tariffs precede ready solutions');
     await page.locator('.tcard').first().waitFor();
     await carouselCheck(page);
     await page.locator('.tcatalog-pagination').scrollIntoViewIfNeeded();

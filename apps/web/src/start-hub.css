@@ -131,3 +131,44 @@
   .hub-v2-price-value { margin: 4px 0 !important; }
   .hub-v2-price-detail { margin-bottom: 6px !important; }
 }
+
+/* The first visit answers what KIRA does, what launch costs, and where to tap. */
+.hub-v2 .hub-v2-guide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); align-items: center; gap: 32px; padding: 0; border: 0; border-radius: 0; background: none; }
+.hub-v2-intro { min-width: 0; }
+.hub-v2 .hub-v2-guide h1 { font-size: clamp(26px, 2.5vw, 34px); }
+.hub-v2 .hub-v2-guide .hub-v2-heading { gap: 12px; margin-bottom: 18px; }
+.hub-v2 .hub-v2-guide .price-summary { margin: 0 0 16px; padding: 14px; }
+.hub-v2 .hub-v2-guide .price-summary-items strong { font-size: 26px; color: #f5f4ff; }
+.hub-v2 .hub-v2-guide .price-summary-items > span { font-size: 12px; }
+.hub-v2-intro-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.hub-v2-intro-actions a { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; text-underline-offset: 4px; color: #c5b5ff; }
+.hub-v2-intro-actions .hub-v2-start { padding: 12px 18px; border-radius: 11px; color: var(--on-accent); font-weight: 700; text-decoration: none; background: linear-gradient(120deg, #7653e5, #247dae); }
+.hub-v2 .hub-v2-guide .instruction-video { margin: 0; width: 100%; order: 0; }
+.hub-v2 .hub-v2-kit .constructor-art { max-height: 130px; margin-bottom: 8px; }
+.hub-v2 .hub-v2-kit > p { padding-bottom: 12px; }
+.hub-v2 .hub-v2-kit h3 { font-size: 16px; margin-bottom: 6px; }
+.hub-v2-kit-hosting { color: var(--kit-accent); font-size: 12px; margin: auto 0 10px; }
+.hub-v2 .hub-v2-pricing { padding-top: 0; border-top: 0; }
+@media (max-width: 900px) {
+  .hub-v2 .hub-v2-guide { gap: 20px; }
+  .hub-v2 .hub-v2-guide h1 { font-size: 26px; }
+}
+@media (max-width: 720px) {
+  .hub-v2 .hub-v2-guide { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .hub-v2 .hub-v2-guide h1 { font-size: clamp(25px, 7vw, 32px); }
+  .hub-v2 .hub-v2-guide .hub-v2-heading > p { font-size: 14px; }
+  .hub-v2 .hub-v2-guide .price-summary-items { grid-template-columns: 1fr; gap: 10px; }
+  .hub-v2 .hub-v2-guide .price-summary-items > span { display: grid; grid-template-columns: 105px minmax(0, 1fr); align-items: center; gap: 1px 10px; font-size: 13px; }
+  .hub-v2 .hub-v2-guide .price-summary-items strong { grid-row: span 2; font-size: 25px; }
+  .hub-v2 .hub-v2-guide .price-summary-items strong small { display: inline; margin-left: 3px; font-size: 10px; }
+  .hub-v2 .hub-v2-guide .price-summary-items em { grid-column: 2; font-size: 11px; }
+  .hub-v2 .hub-v2-guide .price-summary-note { font-size: 11px; gap: 8px; }
+  .hub-v2-intro-actions .hub-v2-start { width: 100%; }
+  .hub-v2-intro-actions > a:last-child { margin-inline: auto; }
+  .hub-v2 .hub-v2-guide .instruction-video { width: calc(100% + 32px); margin-inline: -16px; }
+  .hub-v2 .hub-v2-guide .instruction-video .loop-title,.hub-v2 .hub-v2-guide .instruction-video .loop-steps { padding-inline: 16px; }
+  .hub-v2 .hub-v2-kit-top { display: none; }
+  .hub-v2 .hub-v2-kit { padding: 12px; }
+  .hub-v2 .hub-v2-kit .constructor-art { max-height: 100px; }
+  .hub-v2 .hub-v2-kit h3 { font-size: 14px; }
+}

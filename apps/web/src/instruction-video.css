@@ -1,0 +1,16 @@
+.instruction-video.build-loop { min-width: 0; width: 100%; margin: 0; display: grid; gap: 10px; scroll-margin-top: 100px; }
+.instruction-video.build-loop .loop-title { position: relative; z-index: 1; padding: 0; display: flex; align-items: center; gap: 8px; color: #f5f4ff; font: 700 12px/1.4 Onest, sans-serif; letter-spacing: .035em; }
+.instruction-video .loop-title em { font: 400 11px Onest, sans-serif; color: #aaa6c6; }
+.instruction-video .loop-toggle { margin-left: auto; min-height: 44px; padding: 8px 12px; color: #eee9ff; background: #171322; border: 1px solid #514665; border-radius: 10px; font: 500 12px Onest, sans-serif; cursor: pointer; }
+.instruction-video .loop-glow { display: none; }
+.instruction-video-stage { position: relative; min-width: 0; }
+.instruction-video.build-loop video { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain; display: block; border: 1px solid #514665; border-radius: 18px; background: #08080f; }
+.instruction-video-play { position: absolute; z-index: 2; inset: 0; display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; border: 0; border-radius: 18px; background: #08081155; color: #f5f4ff; text-shadow: 0 1px 8px #000; cursor: pointer; }
+.instruction-video-play > svg { box-sizing: content-box; padding: 18px; border-radius: 50%; background: #7253d9; box-shadow: 0 8px 35px #0008; }
+.instruction-video-play > span { display: grid; gap: 4px; text-align: left; font: 600 15px Onest, sans-serif; }
+.instruction-video-play small { font-size: 12px; font-weight: 400; }
+.instruction-video .loop-steps { margin: 0; padding: 0; color: #aaa6c6; font: 400 12px/1.5 Onest, sans-serif; }
+@media (max-width: 720px) {
+  .instruction-video.build-loop.tall video { aspect-ratio: 4 / 5; max-height: none; object-fit: cover; }
+  .instruction-video .loop-title { flex-wrap: wrap; }
+}
