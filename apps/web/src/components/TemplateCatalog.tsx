@@ -145,10 +145,17 @@ export function TemplateCatalog({ onPick, pending = false, showHeading = true }:
 
   function reset() { setQuery(""); setCategory("all"); setShowAll(false); }
 
+  function openPreview(card: ScenarioCard, trigger: HTMLButtonElement) {
+    // Safari does not focus a button on touch. Explicitly remember the actual
+    // opener before the preview traps focus; the rail itself remains unchanged.
+    trigger.focus({ preventScroll: true });
+    setPreview(createFlowFromTemplate(card.id, card.title));
+  }
+
   function renderCard(card: ScenarioCard, focused: boolean) {
     return <article className={`tcard tcard--${card.accent}${focused ? " is-focused" : ""}`}>
-      <button type="button" className="tcard-preview-button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))} aria-label={`Посмотреть сценарий «${card.title}»`}><ScenarioThumbnail card={card} /><span className="tcard-preview-hint">Проверить в чате <ArrowUpRight size={14} /></span></button>
-      <div className="tcard-content"><span className="tcard-format"><Bot size={13} /> Готовый бот <span>{card.nodeCount} шагов</span></span><h3>{card.title}</h3><p className="tcard-outcome">{card.outcome}</p><p>{card.description}</p><div className="tcard-tags">{card.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><details className="tcard-setup"><summary>Что настроить под себя</summary><p className="tcard-details-description">{card.description}</p><ul>{card.setup.map((item) => <li key={item}>{item}</li>)}</ul></details><div className="tcard-actions"><button className="tcard-look" type="button" onClick={() => setPreview(createFlowFromTemplate(card.id, card.title))}>Посмотреть</button><button className="tcard-use" type="button" disabled={pending} onClick={() => onPick(card.id)}>Использовать <ArrowUpRight size={15} /></button></div></div>
+      <button type="button" className="tcard-preview-button" onClick={(event) => openPreview(card, event.currentTarget)} aria-label={`Посмотреть сценарий «${card.title}»`}><ScenarioThumbnail card={card} /><span className="tcard-preview-hint">Проверить в чате <ArrowUpRight size={14} /></span></button>
+      <div className="tcard-content"><span className="tcard-format"><Bot size={13} /> Готовый бот <span>{card.nodeCount} шагов</span></span><h3>{card.title}</h3><p className="tcard-outcome">{card.outcome}</p><p>{card.description}</p><div className="tcard-tags">{card.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><details className="tcard-setup"><summary>Что настроить под себя</summary><p className="tcard-details-description">{card.description}</p><ul>{card.setup.map((item) => <li key={item}>{item}</li>)}</ul></details><div className="tcard-actions"><button className="tcard-look" type="button" onClick={(event) => openPreview(card, event.currentTarget)}>Посмотреть</button><button className="tcard-use" type="button" disabled={pending} onClick={() => onPick(card.id)}>Использовать <ArrowUpRight size={15} /></button></div></div>
     </article>;
   }
 

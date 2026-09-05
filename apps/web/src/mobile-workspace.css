@@ -1,0 +1,82 @@
+/* Workspace-only mobile layout. Desktop remains the same as the full cabinet. */
+.workspace .mobile-workspace-menu { padding: 0; border: 1px solid var(--line); border-radius: 22px 22px 0 0; color: var(--ink); background: var(--paper); }
+.workspace .mobile-workspace-menu::backdrop { background: rgb(5 5 14 / 72%); backdrop-filter: blur(6px); }
+.workspace .mobile-workspace-menu[open] { width: min(100%, 480px); max-width: 100%; max-height: calc(100dvh - 24px); margin: auto auto 0; overflow-y: auto; overscroll-behavior: contain; }
+.mobile-workspace-menu-content { padding: 20px max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+.mobile-workspace-menu-content header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.mobile-workspace-menu-content header > div { min-width: 0; }
+.mobile-workspace-menu-content h2 { margin: 0; font-size: 20px; }
+.mobile-workspace-menu-content p { margin: 5px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.mobile-workspace-menu-content nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.mobile-workspace-menu-content button { min-height: 48px; min-width: 0; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); text-align: left; color: var(--ink); font: inherit; font-size: 13px; }
+.mobile-workspace-menu-content button svg { width: 18px; height: 18px; flex: none; }
+.mobile-workspace-menu-content button span { flex: 1; }
+.mobile-workspace-menu-content button > svg:last-child:not(:first-child) { width: 14px; }
+.mobile-workspace-menu-content > button { width: 100%; margin-top: 8px; }
+.mobile-workspace-menu-content .workspace-signout { background: transparent; border-color: transparent; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .workspace { min-width: 0; }
+  .workspace .mobile-workspace-bar { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); background: var(--paper); }
+  .workspace .mobile-workspace-bar .project-dot { flex: none; }
+  /* Safari includes the native select's long option text in scrollable overflow. */
+  .workspace .mobile-workspace-bar label { position: relative; display: grid; grid-template-columns: 31px minmax(0, 1fr); overflow: hidden; }
+  .workspace .mobile-workspace-bar label::after { content: "⌄"; position: absolute; right: 12px; top: 8px; color: var(--muted); pointer-events: none; }
+  .workspace .mobile-workspace-bar select { appearance: none; -webkit-appearance: none; color-scheme: dark; max-width: 100%; font-size: 16px; text-overflow: ellipsis; background-color: var(--surface-2); color: var(--ink); }
+  .workspace .mobile-workspace-bar option { background: var(--paper); color: var(--ink); }
+  .workspace .mobile-workspace-bar > button { display: flex; gap: 5px; padding: 0 12px; font-size: 12px; color: var(--brand-800); background: var(--brand-100); }
+  .workspace .dashboard { padding: 20px max(16px, env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .workspace .dashboard > header { gap: 12px; align-items: center; }
+  .workspace .dashboard > header > div { min-width: 0; }
+  .workspace .dashboard > header .muted { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .workspace .dashboard > header h1 { font-size: 23px; }
+  .workspace .dashboard > header .primary-button { flex: none; min-height: 44px; padding: 0 14px; gap: 6px; font-size: 12px; }
+  .workspace .dashboard > header .primary-button svg { width: 17px; }
+  .workspace .status-banner { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; margin: 18px 0 16px; padding: 16px; }
+  .workspace .status-icon { width: 32px; height: 32px; }
+  .workspace .status-banner b { font-size: 14px; }
+  .workspace .status-banner p { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .workspace .status-banner > button { grid-column: 2; min-height: 44px; justify-self: start; padding: 6px 0; font-size: 14px; color: #c4b5fd; }
+  .workspace .panel { min-width: 0; padding: 16px; }
+  .workspace .panel-title { gap: 10px; }
+  .workspace .panel-title > div { min-width: 0; }
+  .workspace .panel-title h2 { font-size: 17px; overflow-wrap: anywhere; }
+  .workspace .panel-title span:first-child { font-size: 10px; }
+  .workspace .progress-ring { flex: none; color: #17132e; font-size: 12px; }
+  .workspace .task { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 9px; padding-block: 12px; }
+  .workspace .task b { font-size: 13px; }
+  .workspace .task p { display: none; }
+  .workspace .task > button { min-height: 44px; max-width: 98px; padding: 6px; font-size: 12px; text-align: left; color: #c4b5fd; }
+  .workspace .task > button svg { flex: none; }
+  .workspace .preview-actions button { min-height: 44px; font-size: 12px; }
+  .workspace .help-card b { font-size: 13px; }
+  .workspace .help-card p { font-size: 12px; }
+  .workspace .help-card button { min-height: 44px; font-size: 12px; }
+  .workspace .mobile-nav { height: auto; min-height: calc(64px + env(safe-area-inset-bottom)); grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 5px max(8px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: var(--paper); }
+  .workspace .mobile-nav button { min-height: 54px; border-radius: 12px; font-size: 11px; gap: 4px; background: transparent; }
+  .workspace .mobile-nav button.active { background: var(--brand-100); color: var(--brand-800); }
+  .workspace .mobile-nav svg { width: 20px; height: 20px; }
+  .workspace .settings-panel input, .workspace .settings-panel select { min-width: 0; max-width: 100%; width: 100%; min-height: 46px; font-size: 16px; }
+  .workspace .empty-section { min-height: 260px; }
+  .workspace .empty-section > div { max-width: 100%; display: grid; gap: 10px; }
+  .workspace .empty-section button, .workspace .empty-section a { min-height: 44px; white-space: normal; }
+  .workspace .lead-list dd, .workspace .lead-list b { overflow-wrap: anywhere; }
+
+  /* The form comes first on a phone; the desktop explanation remains intact. */
+  .auth-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .auth-backdrop .auth-modal { width: min(440px, 100%); border-radius: 22px; max-height: calc(100dvh - 24px); overscroll-behavior: contain; }
+  .auth-backdrop .auth-side { padding: 18px 20px 0; border: 0; background: none; }
+  .auth-backdrop .auth-side .auth-brand { margin: 0; font-size: 20px; }
+  .auth-backdrop .auth-side h3, .auth-backdrop .auth-steps, .auth-backdrop .auth-side-note { display: none; }
+  .auth-backdrop .auth-main { min-width: 0; padding: 20px; gap: 12px; }
+  .auth-backdrop .auth-heading h2 { font-size: 23px; line-height: 1.3; }
+  .auth-backdrop .auth-heading p { font-size: 13px; line-height: 1.5; }
+  .auth-backdrop .auth-fields { gap: 12px; }
+  .auth-backdrop .auth-fields input { font-size: 16px; min-height: 48px; }
+  .auth-backdrop .password-control button { width: 44px; height: 44px; }
+  .auth-backdrop .auth-modal .modal-close { top: 14px; right: 14px; width: 44px; height: 44px; }
+  .auth-backdrop .auth-switch, .auth-backdrop .auth-help { display: grid; place-items: center; min-height: 44px; font-size: 13px; line-height: 1.4; }
+  .auth-backdrop .demo-button { min-height: 44px; padding: 10px; font-size: 13px; white-space: normal; }
+  .auth-backdrop .legal-check { align-items: start; gap: 10px; font-size: 12px; line-height: 1.5; }
+  .auth-backdrop .legal-check input { flex: none; width: 22px; height: 22px; margin: 0; }
+}

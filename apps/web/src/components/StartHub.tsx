@@ -1,13 +1,13 @@
-import { ArrowRight, Bot, Check, Globe, LayoutGrid, MessageSquareText, Smartphone } from "lucide-react";
+import { ArrowRight, Bot, Check, ChevronDown, LayoutGrid, MessageSquareText, Play, Smartphone } from "lucide-react";
+import { useState } from "react";
 import type { FlowTemplateId } from "../flow-store";
 import type { ProductKit } from "../types";
 import { TemplateCatalog } from "./TemplateCatalog";
 import { ConstructorArtwork } from "./ProductArtwork";
-import { PriceSummary } from "./PriceSummary";
 import { InstructionVideo } from "./InstructionVideo";
 import "../start-hub.css";
 
-type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string; price: 350 | 650 };
+type Kit = { id: ProductKit; title: string; description: string; hint: string };
 
 const hostingPlans: ReadonlyArray<{ kit: ProductKit; plan: "solo" | "trio" | "studio"; title: string; price: number; detail: string; icon: typeof Bot }> = [
   { kit: "bot", plan: "solo", title: "Один текстовый бот", price: 350, detail: "1 бот · сообщения и цепочки", icon: MessageSquareText },
@@ -17,10 +17,10 @@ const hostingPlans: ReadonlyArray<{ kit: ProductKit; plan: "solo" | "trio" | "st
 ];
 
 const kits: readonly Kit[] = [
-  { id: "bot", icon: MessageSquareText, title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hosting: "Сценарий в Telegram", price: 350 },
-  { id: "bot-app", icon: Smartphone, title: "Бот и Mini App", description: "Бот и приложение с каталогом, карточками и формами.", hosting: "Бот + приложение", price: 650 },
-  { id: "bot-app-site", icon: LayoutGrid, title: "Бот, Mini App и сайт", description: "Один проект в Telegram и по ссылке в браузере.", hosting: "Бот + приложение + сайт", price: 650 },
-  { id: "site", icon: Globe, title: "Только сайт", description: "Страница из блоков с предпросмотром в браузере.", hosting: "Страница проекта", price: 350 },
+  { id: "bot", title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hint: "Диалог и заявки" },
+  { id: "bot-app", title: "Бот и Mini App", description: "Бот и приложение с каталогом, карточками и формами.", hint: "Каталог в Telegram" },
+  { id: "bot-app-site", title: "Бот, Mini App и сайт", description: "Один проект в Telegram и по ссылке в браузере.", hint: "Все три формата" },
+  { id: "site", title: "Только сайт", description: "Страница из блоков с предпросмотром в браузере.", hint: "Страницы по ссылке" },
 ];
 
 type StartHubProps = {
@@ -35,6 +35,8 @@ type StartHubProps = {
 
 /** All editor formats are free to explore; hosting depends on the published format. */
 export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, pending = false, userName }: StartHubProps) {
+  const [instructionOpen, setInstructionOpen] = useState(false);
+  const firstProject = projects[0];
   return <main className="hub-v2">
     <header className="hub-v2-header">
       <span className="hub-v2-brand"><span><Bot size={21} /></span><b className="kira-wordmark">KIRA<small>Конструктор ботов миниаппов сайтов</small></b></span>
@@ -49,18 +51,28 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
           <div className="hub-v2-heading">
             <span className="hub-v2-eyebrow">KIRA · КОНСТРУКТОР БЕЗ КОДА</span>
             <h1 id="hub-guide-title">Создайте бота,<br />Mini App или сайт</h1>
-            <p>{userName ? `${userName}, соберите` : "Соберите"} и проверьте бесплатно. Оплата — только за запуск для клиентов.</p>
+            <p><span className="hub-v2-copy-desktop">{userName ? `${userName}, соберите` : "Соберите"} и проверьте бесплатно. Оплата — только за запуск для клиентов.</span><span className="hub-v2-copy-mobile">Собирайте бесплатно. Платите только за запуск.</span></p>
           </div>
-          <PriceSummary href="#hub-pricing" />
+          {firstProject && <button type="button" className="hub-v2-resume" onClick={() => onOpenProject(firstProject.id)} disabled={pending}>
+            <span className="hub-v2-project-icon">{firstProject.name.slice(0, 1).toUpperCase()}</span>
+            <span className="hub-v2-project-name"><small>Продолжить проект</small><strong>{firstProject.name}</strong></span>
+            <ArrowRight size={18} />
+          </button>}
           <div className="hub-v2-intro-actions">
-            <a className="hub-v2-start" href="#hub-constructors">Выбрать конструктор <ArrowRight size={17} /></a>
-            <a href="#hub-video">Как это работает · 21 сек</a>
+            <a className="hub-v2-start" href="#hub-constructors"><span className="hub-v2-copy-desktop">Выбрать конструктор</span><span className="hub-v2-copy-mobile">{firstProject ? "Новый проект" : "Выбрать конструктор"}</span><ArrowRight size={17} /></a>
+            <a className="hub-v2-solutions-link" href="#hub-templates">Готовые решения</a>
+            <a className="hub-v2-desktop-video-link" href="#hub-video">Как это работает · 21 сек</a>
           </div>
+          <button className="hub-v2-video-toggle" type="button" aria-expanded={instructionOpen} aria-controls="hub-instruction" onClick={() => setInstructionOpen((open) => !open)}>
+            <Play size={15} /><span>Видеоинструкция · 21 сек</span><ChevronDown size={16} />
+          </button>
         </div>
-        <InstructionVideo id="hub-video" />
+        <div id="hub-instruction" className={`hub-v2-instruction${instructionOpen ? " is-open" : ""}`}>
+          <InstructionVideo id="hub-video" />
+        </div>
       </section>
 
-      {projects.length > 0 && <section className="hub-v2-section" aria-labelledby="hub-projects-title">
+      {projects.length > 0 && <section className={`hub-v2-section hub-v2-existing-projects${projects.length === 1 ? " hub-v2-single-project" : ""}`} aria-labelledby="hub-projects-title">
         <div className="hub-v2-section-title"><h2 id="hub-projects-title">Продолжить работу</h2><span>Проектов: {projects.length}</span></div>
         <div className="hub-v2-projects">
           {projects.map((project) => <button type="button" key={project.id} onClick={() => onOpenProject(project.id)} disabled={pending}>
@@ -75,18 +87,17 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
         <div className="hub-v2-heading">
           <span className="hub-v2-eyebrow">КОНСТРУКТОРЫ</span>
           <h2 id="hub-constructors-title">Что хотите создать?</h2>
-          <p>Нажмите на вариант — откроется бесплатный редактор.</p>
+          <p>Выберите формат. Редактор откроется бесплатно.</p>
         </div>
         <div className="hub-v2-kit-grid">
-          {kits.map(({ id, title, description, price }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
+          {kits.map(({ id, title, description, hint }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
             <span className="hub-v2-kit-top"><span>Бесплатный редактор</span></span>
             <ConstructorArtwork kit={id} />
-            <h3>{title}</h3><p>{description}</p>
-            <small className="hub-v2-kit-hosting">Запуск — {price} ₽/мес</small>
+            <h3>{title}</h3><p><span className="hub-v2-copy-desktop">{description}</span><span className="hub-v2-copy-mobile">{hint}</span></p>
             <span className="hub-v2-kit-cta">Собрать бесплатно <ArrowRight size={17} /></span>
           </button>)}
         </div>
-        <p className="hub-v2-free"><Check size={16} />Карта и Premium не нужны. Оплата — только за запуск и хостинг.</p>
+        <p className="hub-v2-free"><Check size={16} />Без карты и Premium. Оплата только за запуск.</p>
         {pending && <p className="hub-v2-status" role="status">Открываем конструктор…</p>}
       </section>
 

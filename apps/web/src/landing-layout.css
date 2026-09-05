@@ -15,13 +15,7 @@
 .landing .hero .build-loop video { width: 100%; border-radius: 16px; aspect-ratio: 16 / 9; object-fit: contain; }
 .landing .hero .loop-glow { opacity: .45; pointer-events: none; }
 .landing .hero .loop-title { position: relative; z-index: 1; }
-.hero-mobile-price { display: none; }
-.landing .hero > .price-summary { grid-column: 1 / -1; margin: 0; padding: 16px 20px; }
-.landing .hero .price-summary-items > span { font-size: 14px; }
-.landing .hero .price-summary-items strong { font-size: 30px; color: #f5f4ff; }
-.landing .hero .price-summary-items strong small { font-size: 13px; }
-.landing .hero .price-summary-items em { font-size: 12px; }
-.landing .hero .price-summary-note { font-size: 12px; margin-top: 10px; padding-top: 10px; }
+.landing-mobile-copy, .landing-mobile-menu { display: none; }
 .landing .kinds { padding-top: 16px; padding-bottom: 40px; scroll-margin-top: 78px; }
 .landing section.kinds[id] { scroll-margin-top: 54px; }
 .landing .kinds .section-heading { max-width: 900px; margin-bottom: 16px; }
@@ -45,28 +39,78 @@
   .landing .hero-copy > p { font-size: 14px; }
 }
 @media (max-width: 720px) {
-  .hero-mobile-price { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; color: #bbb5d3; font-size: 12px; }
-  .hero-mobile-price span { display: grid; gap: 4px; }
-  .hero-mobile-price strong { color: #f5f4ff; font-size: 17px; }
-  .hero-mobile-price a { align-self: end; color: #c4b5fd; font-size: 12px; }
   .landing .hero { grid-template-columns: 1fr; padding: 24px 18px 30px; gap: 22px; }
   .landing .hero h1 { font-size: clamp(27px, 7.4vw, 34px); }
   .landing .hero .build-loop { order: 0; }
-  /* the tall cut fills the phone: cropping beats letterboxing at this size */
-  .landing .hero .build-loop.tall { margin-inline: -18px; }
+  /* Keep the tall composition readable without bleeding outside the safe area. */
+  .landing .hero .build-loop.tall { margin-inline: 0; }
   .landing .hero .build-loop.tall video { aspect-ratio: 4 / 5; max-height: none; object-fit: cover; border-radius: 18px; }
   .landing .hero .build-loop.tall .loop-title,
-  .landing .hero .build-loop.tall .loop-steps { padding-inline: 18px; }
-  .landing .hero > .price-summary { padding: 14px; }
-  .landing .hero .price-summary-items { grid-template-columns: 1fr; gap: 12px; }
-  .landing .hero .price-summary-items > span { display: grid; grid-template-columns: 112px 1fr; align-items: center; font-size: 13px; }
-  .landing .hero .price-summary-items strong { font-size: 26px; grid-row: span 2; }
-  .landing .hero .price-summary-items strong small { display: inline; margin-left: 3px; font-size: 11px; }
-  .landing .hero .price-summary-items em { grid-column: 2; }
+  .landing .hero .build-loop.tall .loop-steps { padding-inline: 0; }
   .landing .hero .build-loop .loop-title { font-size: 11px; gap: 7px; }
   .landing .hero .loop-title em { font-size: 10px; }
   .landing .pieces { padding: 26px 18px; }
   .landing .piece-grid { gap: 10px; }
   .landing .landing-nav { row-gap: 2px; padding-block: 8px; }
   .landing section.kinds[id] { scroll-margin-top: 88px; }
+}
+
+/* The public menu is a disclosure, not a horizontally clipped toolbar. */
+@media (max-width: 1150px) {
+  .landing .landing-nav { display: flex; flex-wrap: nowrap; height: 72px; gap: 12px; padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); }
+  .landing .landing-nav > nav { display: none; }
+  .landing .landing-nav > .brand { flex: 1; min-width: 0; }
+  .landing .landing-nav .brand > span:not(.brand-mark) { min-width: 0; }
+  .landing .landing-nav .brand small { white-space: normal; max-width: 175px; font-size: 10px; line-height: 1.3; }
+  .landing .landing-nav .nav-actions { margin-left: auto; }
+  .landing .landing-nav .nav-actions .primary-button { display: none; }
+  .landing .landing-nav .nav-login { display: inline-flex; min-height: 44px; align-items: center; padding: 0 12px; font-size: 13px; }
+  .landing .landing-mobile-menu { display: block; flex: none; }
+  .landing-mobile-menu > summary { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 10px; color: var(--text); cursor: pointer; list-style: none; font-size: 12px; }
+  .landing-mobile-menu > summary::-webkit-details-marker { display: none; }
+  .landing-mobile-menu[open] > summary { background: #292040; border-color: #A78BFA; }
+  .landing .landing-mobile-menu > nav { position: absolute; display: grid; inset: 100% max(16px, env(safe-area-inset-right)) auto max(16px, env(safe-area-inset-left)); width: auto; max-height: calc(100dvh - 100px); overflow: auto; gap: 4px; padding: 12px; border: 1px solid #423854; border-radius: 16px; background: #12121f; box-shadow: 0 16px 45px #0008; }
+  .landing .landing-mobile-menu > nav > a, .landing .landing-mobile-menu > nav > button { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; color: #f5f4ff; background: transparent; font: 500 14px Onest, sans-serif; text-align: left; white-space: normal; }
+  .landing .landing-mobile-menu > nav > :hover { background: #242037; }
+  .landing section[id] { scroll-margin-top: 76px; }
+}
+@media (max-width: 720px) {
+  .landing .landing-desktop-copy { display: none; }
+  .landing .landing-mobile-copy { display: inline; }
+  .landing .landing-nav { height: 66px; gap: 8px; }
+  .landing .landing-nav .brand { gap: 8px; font-size: 18px; }
+  .landing .landing-nav .brand-mark { width: 34px; height: 34px; flex: none; }
+  .landing .landing-nav .brand small { display: none; }
+  .landing .hero { padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); gap: 18px; }
+  .landing .hero h1 { font-size: clamp(25px, 7.3vw, 34px); margin: 12px 0; }
+  .landing .hero .eyebrow { padding: 0; border: 0; background: none; font-size: 9px; color: #84d4ee; }
+  .landing .hero-copy > p { font-size: 14px; line-height: 1.5; }
+  .landing .hero-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 16px; }
+  .landing .hero-actions .large { min-height: 48px; width: 100%; font-size: 14px; }
+  .landing .hero-actions .text-link { display: none; } /* Same action lives on the visible video just below. */
+  .landing .hero-chips { margin: 10px 0 0; font-size: 11px; }
+  .landing .hero-chips li:first-child { display: none; } /* The primary button already says free. */
+  .landing .hero .build-loop .loop-toggle { min-height: 44px; }
+  .landing .hero .loop-steps { display: none; }
+  .landing .pieces, .landing .how, .landing .pricing, .landing .faq { padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+  .landing .section-heading { text-align: left; margin-bottom: 16px; }
+  .landing .section-heading h2, .landing .pieces .section-heading h2, .landing .kinds .section-heading h2 { font-size: 23px; line-height: 1.25; margin: 8px 0; }
+  .landing .section-heading p { font-size: 13px; line-height: 1.5; }
+  .landing .piece { grid-template-columns: 42px minmax(0, 1fr); grid-template-rows: auto auto; padding: 14px; gap: 4px 12px; }
+  .landing .piece-icon { grid-row: 1 / 3; width: 42px; height: 42px; align-self: center; }
+  .landing .piece b { font-size: 15px; grid-row: 1; }
+  .landing .piece p { grid-column: 2; grid-row: 2; margin: 0; line-height: 1.45; font-size: 12px; }
+  .landing .piece-tag, .landing .piece small { display: none; }
+  .landing .piece-link { margin: 10px 0 0; padding: 10px 12px; font-size: 12px; }
+  .landing .how-rail { gap: 8px; }
+  .landing .how-rail li { grid-template-columns: 28px minmax(0, 1fr); gap: 4px 10px; padding: 12px; }
+  .landing .how-rail i { grid-row: span 2; }
+  .landing .how-rail b { font-size: 13px; }
+  .landing .how-rail small { grid-column: 2; font-size: 12px; }
+  .landing .how-cta { display: none; }
+  .landing .service-band, .landing .final-cta { margin-inline: 16px; padding: 22px 18px; border-radius: 18px; }
+  .landing .service-band h2, .landing .final-cta h2 { font-size: 22px; }
+  .landing .service-band p, .landing .final-cta p { font-size: 13px; }
+  .landing .service-band .cta-light, .landing .final-cta .cta-light { width: 100%; min-height: 48px; white-space: normal; font-size: 13px; }
+  .landing .faq summary { min-height: 48px; font-size: 14px; }
 }

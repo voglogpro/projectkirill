@@ -5,13 +5,14 @@ import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.KIRA_BROWSER_MODULE ?? "playwright");
+const playwright = require(process.env.KIRA_BROWSER_MODULE ?? "playwright");
+const chromium = playwright[process.env.KIRA_QA_ENGINE ?? "chromium"];
 const base = process.env.KIRA_QA_URL ?? "http://127.0.0.1:5174";
 const output = new URL("../preview/qa/", import.meta.url);
 await mkdir(output, { recursive: true });
 const userId = "qa-hub-owner";
 const project = {
-  id: "11111111-1111-4111-8111-111111111111", name: "Мой существующий бот", status: "draft", plan: "free", kit: "bot",
+  id: "11111111-1111-4111-8111-111111111111", name: "Мой существующий бот", status: "draft", plan: "free", kit: "bot", hasPendingChanges: false,
   activePageId: "22222222-2222-4222-8222-222222222222",
   pages: [{ id: "22222222-2222-4222-8222-222222222222", title: "Главная", slug: "home", remoteRevision: 1, blocks: [{ id: "33333333-3333-4333-8333-333333333333", type: "heading", version: 1, props: { text: "Не менять: облачный проект", level: 1, align: "start" } }] }],
 };
@@ -56,7 +57,7 @@ async function open(width, height) {
     if (!localStorage.getItem("tma-studio-flow-v1")) localStorage.setItem("tma-studio-flow-v1", JSON.stringify(flow));
   }, { project, flow, userId, projectKey });
   await page.goto(`${base}/hub`);
-  await page.locator(".hub-v2-projects button").first().waitFor();
+  await page.locator(".hub-v2-guide").waitFor();
   await page.evaluate(() => document.fonts.ready);
   return { page, context };
 }
@@ -148,21 +149,50 @@ try {
     assert.equal(await page.locator(".hub-v2-content > section").first().getAttribute("class"), "hub-v2-guide");
     assert.equal(await page.locator(".hub-v2-content > section").last().getAttribute("id"), "hub-templates");
     assert.equal(await page.locator('#hub-video video').count(), 1, 'The hub has the shared video instruction');
+    assert.equal(await page.locator('.hub-v2-guide .price-summary').count(), 0, 'Prices belong in tariffs, not under the hero heading');
+    assert.equal(await page.locator('.hub-v2-kit-hosting').count(), 0, 'Constructor choices do not repeat pricing');
+    await page.screenshot({ path: fileURLToPath(new URL(`hub-entry-${width}.png`, output)), fullPage: false });
     const startButton = await page.locator('.hub-v2-start').boundingBox();
     assert(startButton.y + startButton.height <= height, 'The initial screen has a visible next action');
     if (width < 600) {
+      const resume = page.locator('.hub-v2-resume');
+      const resumeBox = await resume.boundingBox();
+      assert(resumeBox && resumeBox.y + resumeBox.height <= height, 'Returning users can continue their project on the first screen');
+      assert.match(await resume.innerText(), /Мой существующий бот/);
+      assert.equal(await page.locator('.hub-v2-single-project').isVisible(), false, 'The promoted project is not repeated below');
+      assert.equal(await page.locator('#hub-instruction').isVisible(), false, 'The mobile overview is not pushed down by a video before the user asks for it');
+      for (const control of ['.hub-v2-resume', '.hub-v2-start', '.hub-v2-solutions-link', '.hub-v2-video-toggle']) {
+        const box = await page.locator(control).boundingBox();
+        assert(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= width, `${control} is a usable, contained touch target`);
+      }
+      await page.locator('.hub-v2-video-toggle').click();
+      assert.equal(await page.locator('.hub-v2-video-toggle').getAttribute('aria-expanded'), 'true');
       const videoBox = await page.locator('#hub-video video').boundingBox();
-      assert(videoBox.width >= width - 2, 'The vertical video fills the phone width');
-      assert(videoBox.height >= width * 1.2, 'The instruction is not a miniature letterboxed video');
+      assert(videoBox.width >= width - 34, 'The vertical video fills the content width with safe side gutters');
+      assert(videoBox.height >= videoBox.width * 1.2, 'The instruction is not a miniature letterboxed video');
       assert.match(await page.locator('#hub-video video source').first().getAttribute('src'), /tall/);
+      await page.locator('#hub-video').scrollIntoViewIfNeeded();
+    } else {
+      await page.locator('.hub-v2-intro-actions a[href="#hub-video"]').click();
+      // Wait for the desktop smooth anchor to arrive, not only its first pixel.
+      await page.waitForFunction(() => { const video = document.getElementById('hub-video'); const rect = video.getBoundingClientRect(); const margin = parseFloat(getComputedStyle(video).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop); const target = Math.min(margin, rect.top + scrollY); return Math.abs(rect.top - target) < 3; });
     }
-    await page.locator('.hub-v2-intro-actions a[href="#hub-video"]').click();
-    // Wait for the smooth anchor to arrive, not merely for the video's first pixel to enter.
-    await page.waitForFunction(() => { const video = document.getElementById('hub-video'); const target = parseFloat(getComputedStyle(video).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop); return Math.abs(video.getBoundingClientRect().top - target) < 3; });
     await page.waitForFunction(() => document.querySelector('#hub-video video').readyState >= 2);
     if (await page.locator('#hub-video video').evaluate(video => video.paused)) await page.getByRole('button', { name: 'Воспроизвести видео', exact: true }).click();
     await page.getByRole('button', { name: 'Приостановить видео', exact: true }).click();
     assert(await page.locator('#hub-video video').evaluate(video => video.paused), 'Hub video plays and pauses');
+    if (width < 600) {
+      await page.locator('.hub-v2-video-toggle').click();
+      assert.equal(await page.locator('.hub-v2-video-toggle').getAttribute('aria-expanded'), 'false');
+      assert.equal(await page.locator('#hub-instruction').isVisible(), false, 'The mobile instruction collapses back to the action overview');
+      await page.locator('.hub-v2-resume').click();
+      await page.locator('.workspace').waitFor();
+      assert.equal(new URL(page.url()).searchParams.has('draft'), false, 'Continue opens the saved project, not a preview draft');
+      await originalUnchanged(page);
+      await page.goto(`${base}/hub`);
+      await page.locator('.hub-v2-solutions-link').click();
+      await page.waitForFunction(() => { const box = document.getElementById('hub-templates').getBoundingClientRect(); return box.top < innerHeight && box.bottom > 0; });
+    }
     assert(await page.locator('#hub-pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('hub-templates')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Hosting costs precede ready solutions');
     await page.locator('.hub-v2-start').click();
     await page.waitForFunction(() => document.getElementById('hub-constructors').getBoundingClientRect().top < innerHeight);

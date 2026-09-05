@@ -21,15 +21,14 @@ try {
     assert(await page.locator('#pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('kinds')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Costs precede solutions on the landing');
     const metrics = await page.evaluate(() => {
       const box = s => document.querySelector(s).getBoundingClientRect().toJSON();
-      return { hero: box('.hero'), video: box('.hero video'), price: box('.hero .price-summary'), title: box('.hero h1'), priceFont: parseFloat(getComputedStyle(document.querySelector('.hero .price-summary strong')).fontSize), overflow: document.documentElement.scrollWidth > innerWidth };
+      return { hero: box('.hero'), video: box('.hero video'), action: box('.hero-actions button'), title: box('.hero h1'), prices: document.querySelectorAll('.hero .price-summary,.hero-mobile-price').length, overflow: document.documentElement.scrollWidth > innerWidth };
     });
     assert.equal(metrics.overflow, false, `No overflow at ${width}`);
     if (width >= 1200) {
-      assert(metrics.price.bottom <= height, `All prices visible at ${width}: ${metrics.price.bottom}`);
       assert(metrics.video.top < 250 && metrics.video.bottom < height, 'Video is in the first viewport');
-      assert(metrics.priceFont >= 28, 'Hosting prices remain readable');
     }
-    if (width === 768) assert(metrics.video.top < metrics.price.top, 'Tablet video does not drop below prices');
+    assert.equal(metrics.prices, 0, 'No prices beneath the hero heading');
+    assert(metrics.action.bottom < height, 'The next action fits the first viewport');
     await page.screenshot({ path: fileURLToPath(new URL(`compact-hero-${width}.png`, output)) });
     await page.evaluate(() => document.getElementById('kinds').scrollIntoView({ behavior: 'instant' }));
     const card = await page.locator('.tcard-slot:not([inert]) .tcard.is-focused').first().boundingBox();
@@ -46,7 +45,7 @@ try {
     await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
     assert.equal(await page.locator('.tcatalog-grid .tcard').count(), 18);
     if (width <= 480) assert.equal(await page.locator('.tcatalog-grid').evaluate(e => getComputedStyle(e).gridTemplateColumns.split(' ').length), 1);
-    console.log(`PASS ${width}x${height}: hero, prices, compact cards, rail scrolls, expanded layout`);
+    console.log(`PASS ${width}x${height}: compact hero, separate tariffs, cards, rail scrolls, expanded layout`);
     await context.close();
   }
   const context = await browser.newContext({ reducedMotion: 'reduce' });
@@ -65,10 +64,11 @@ try {
   hub.on('pageerror', error => errors.push(error.message));
   await hub.goto(`${base}/hub`);
   await hub.evaluate(() => document.fonts.ready);
+  await hub.locator('.hub-v2-video-toggle').click();
   const video = hub.locator('#hub-video video');
   assert(await video.evaluate(node => node.paused), 'Hub reduced motion starts on the poster');
   const box = await video.boundingBox();
-  assert(box.width >= 388 && box.height >= 468, 'Hub instruction fills the phone in 4:5');
+  assert(box.width >= 350 && box.height >= 430, 'Hub instruction stays readable inside phone gutters in 4:5');
   assert(await hub.locator('#hub-pricing').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('hub-templates')) & Node.DOCUMENT_POSITION_FOLLOWING)));
   assert.equal(await hub.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await hub.screenshot({ path: fileURLToPath(new URL('first-visit-hub-390.png', output)) });
