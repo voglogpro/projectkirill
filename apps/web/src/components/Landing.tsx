@@ -163,7 +163,7 @@ function BuildLoop() {
     }, { threshold: 0.25 });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [reduced]);
+  }, [reduced, tall]);
 
   return <figure className={`build-loop ${tall ? "tall" : ""}`}>
     <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em></figcaption>

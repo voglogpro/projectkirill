@@ -1,11 +1,13 @@
-import { applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MiniMap, Position, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
+import { applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MarkerType, MiniMap, Panel, Position, ReactFlow, useNodeId, useUpdateNodeInternals, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ArrowLeft, CircleHelp, Clock, GitBranch, MessageSquareText, MousePointerClick, Play, Plus, Rocket, SlidersHorizontal, Trash2, UserRound, X } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock, GitBranch, Hand, MessageSquareText, MousePointer2, MousePointerClick, Move, Play, Plus, Redo2, Rocket, SlidersHorizontal, Trash2, Undo2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
 import { hasSession, loadRemoteFlow, publishRemoteFlow, saveRemoteFlow } from "../api";
 import { createFlowNode, exitsOf, nodeCatalog, saveFlow, type FlowNodeType } from "../flow-store";
 import { useCompact } from "../use-compact";
+import { canConnect, connectFlow, flowNodeLabel, replaceFlowNode } from "../flow-connections";
+import { createFlowSaveQueue } from "../flow-save-queue";
 import { FlowSimulator } from "./FlowSimulator";
 
 type CanvasData = { node: FlowNode; onChange: (node: FlowNode) => void };
@@ -20,13 +22,54 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const compact = useCompact();
   const [sheet, setSheet] = useState<"none" | "inspector">("none");
+  const [inspectorTab, setInspectorTab] = useState<"content" | "links">("content");
+  const [panMode, setPanMode] = useState(false);
+  const [moveOnPhone, setMoveOnPhone] = useState(false);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string>();
+  const past = useRef<BotFlowDocument[]>([]);
+  const future = useRef<BotFlowDocument[]>([]);
+  const currentFlow = useRef(flow);
+  currentFlow.current = flow;
   const canvas = useRef<ReactFlowInstance<CanvasNode, Edge>>(undefined);
-  const [revision, setRevision] = useState<number>();
+  const remoteSaves = useRef<ReturnType<typeof createFlowSaveQueue>>(undefined);
+  const [loading, setLoading] = useState(hasSession);
+  const [launching, setLaunching] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const skipNextSave = useRef(true);
   const selected = flow.nodes.find((node) => node.id === selectedId);
 
-  const commit = useCallback((next: BotFlowDocument) => { saveFlow(next); onChange(next); }, [onChange]);
+  const commit = useCallback((next: BotFlowDocument) => {
+    if (next === currentFlow.current) return;
+    past.current = [...past.current.slice(-49), currentFlow.current];
+    future.current = [];
+    currentFlow.current = next;
+    saveFlow(next); onChange(next);
+  }, [onChange]);
+
+  function travel(direction: "undo" | "redo") {
+    const source = direction === "undo" ? past : future;
+    const target = direction === "undo" ? future : past;
+    const next = source.current.pop();
+    if (!next) return;
+    target.current.push(currentFlow.current);
+    currentFlow.current = next;
+    setSelectedEdgeId(undefined);
+    saveFlow(next); onChange(next);
+  }
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (loading || launching || simulatorOpen || (event.target instanceof Element && event.target.closest("input,textarea,select,[contenteditable=true]"))) return;
+      if (event.key === "Escape") { setSelectedEdgeId(undefined); setSheet("none"); }
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        travel(event.shiftKey || event.key.toLowerCase() === "y" ? "redo" : "undo");
+      }
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  });
 
   // The server owns the scenario; local storage is the offline copy and what
   // the preview stand reads.
@@ -37,38 +80,49 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
       .then((remote) => {
         if (!active) return;
         const document = remote.document as BotFlowDocument | undefined;
-        if (!Array.isArray(document?.nodes)) { onMessage("Сервер вернул сценарий в неизвестном формате — работаем с локальной копией"); return; }
-        setRevision(remote.revision);
+        if (!Array.isArray(document?.nodes)) { setSaveState("error"); onMessage("Сервер вернул сценарий в неизвестном формате — работаем с локальной копией"); return; }
+        remoteSaves.current = createFlowSaveQueue(document, remote.revision,
+          (next, revision) => saveRemoteFlow(projectId, next, revision));
+        past.current = []; future.current = [];
         skipNextSave.current = true;
         saveFlow(document);
         onChange(document);
         // The previous selection belonged to the local copy and may not exist here.
         setSelectedId(document.nodes[1]?.id ?? document.nodes[0]?.id);
       })
-      .catch((reason: unknown) => { if (active) onMessage(reason instanceof Error ? reason.message : "Не удалось загрузить сценарий"); });
+      .catch((reason: unknown) => { if (active) { setSaveState("error"); onMessage(reason instanceof Error ? reason.message : "Не удалось загрузить сценарий"); } })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [projectId]);
 
   useEffect(() => {
     if (skipNextSave.current) { skipNextSave.current = false; return; }
-    if (!hasSession() || revision === undefined) return;
+    const queue = remoteSaves.current;
+    if (!hasSession() || queue === undefined) return;
+    let active = true;
     setSaveState("saving");
     const timer = setTimeout(() => {
-      void saveRemoteFlow(projectId, flow, revision)
-        .then((saved) => { setRevision(saved.revision); setSaveState("saved"); })
-        .catch((reason: unknown) => { setSaveState("error"); onMessage(reason instanceof Error ? reason.message : "Не удалось сохранить сценарий"); });
+      void queue.save(flow)
+        .then(() => { if (active) setSaveState("saved"); })
+        .catch((reason: unknown) => { if (active) { setSaveState("error"); onMessage(reason instanceof Error ? reason.message : "Не удалось сохранить сценарий"); } });
     }, 900);
-    return () => clearTimeout(timer);
-  }, [flow, projectId, revision]);
+    return () => { active = false; clearTimeout(timer); };
+  }, [flow, projectId]);
 
   async function launch() {
-    if (hasSession()) {
-      try { await publishRemoteFlow(projectId); }
-      catch (reason) { onMessage(reason instanceof Error ? reason.message : "Не удалось опубликовать сценарий"); return; }
-    }
-    onLaunch();
+    setLaunching(true);
+    try {
+      if (hasSession()) {
+        if (!remoteSaves.current) throw new Error("Сначала загрузите облачный сценарий: вернитесь в кабинет и откройте редактор заново.");
+        await remoteSaves.current.save(currentFlow.current);
+        await publishRemoteFlow(projectId);
+        setSaveState("saved");
+      }
+      onLaunch();
+    } catch (reason) { onMessage(reason instanceof Error ? reason.message : "Не удалось опубликовать сценарий"); }
+    finally { setLaunching(false); }
   }
-  const updateNode = useCallback((next: FlowNode) => commit({ ...flow, nodes: flow.nodes.map((node) => node.id === next.id ? next : node) }), [flow, commit]);
+  const updateNode = useCallback((next: FlowNode) => commit(replaceFlowNode(flow, next)), [flow, commit]);
 
   // React Flow owns the canvas nodes because it writes measured sizes onto them
   // and hides anything it has not measured; the document stays the source of
@@ -85,14 +139,17 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     // Steady light, never marching ants: the glow lives in CSS so the line
     // reads as one lit filament from the button to the step it opens.
     id: edge.id, source: edge.from, sourceHandle: edge.fromHandle, target: edge.to,
-    animated: false, type: "smoothstep",
-  })), [flow.edges]);
+    animated: false, type: "smoothstep", selected: edge.id === selectedEdgeId,
+    markerEnd: { type: MarkerType.ArrowClosed, color: "#A78BFA" },
+    interactionWidth: compact ? 36 : 24,
+  })), [flow.edges, selectedEdgeId, compact]);
 
   function onNodesChange(changes: NodeChange<CanvasNode>[]) {
-    const next = applyNodeChanges(changes, nodes);
+    // /start cannot disappear from the canvas through Delete either.
+    const safeChanges = changes.filter((change) => change.type !== "remove" || !flow.nodes.some((node) => node.id === change.id && node.type === "start" && node.props.command === "start"));
+    const next = applyNodeChanges(safeChanges, nodes);
     setNodes(next);
-    const removed = new Set(changes.flatMap((change) => change.type === "remove" ? [change.id] : []));
-    if (removed.size > 0 && flow.nodes.some((node) => removed.has(node.id) && node.type === "start" && node.props.command === "start")) return;
+    const removed = new Set(safeChanges.flatMap((change) => change.type === "remove" ? [change.id] : []));
     // Positions are written once the drag ends, so one move is one saved change.
     const settled = changes.some((change) => change.type === "position" && change.dragging === false);
     if (removed.size === 0 && !settled) return;
@@ -106,18 +163,36 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   }
 
   function onEdgesChange(changes: EdgeChange<Edge>[]) {
-    const kept = new Set(applyEdgeChanges(changes, edges).map((edge) => edge.id));
-    commit({ ...flow, edges: flow.edges.filter((edge) => kept.has(edge.id)) });
+    const removed = new Set(changes.flatMap((change) => change.type === "remove" ? [change.id] : []));
+    // Selection is UI state, not a scenario edit or an autosave.
+    if (removed.size > 0) commit({ ...currentFlow.current, edges: currentFlow.current.edges.filter((edge) => !removed.has(edge.id)) });
+  }
+
+  async function back() {
+    // Leaving during the debounce must not discard the last connection edit.
+    if (!remoteSaves.current) { onBack(); return; }
+    setLaunching(true);
+    try { await remoteSaves.current.save(currentFlow.current); onBack(); }
+    catch (reason) { onMessage(reason instanceof Error ? reason.message : "Не удалось сохранить сценарий. Попробуйте ещё раз."); }
+    finally { setLaunching(false); }
   }
 
   function onConnect(connection: Connection) {
-    const handle = connection.sourceHandle ?? "next";
-    // One exit leads to one node, so a new link replaces whatever was there.
-    const rest = flow.edges.filter((edge) => !(edge.from === connection.source && edge.fromHandle === handle));
-    commit({ ...flow, edges: [...rest, { id: `e-${crypto.randomUUID().slice(0, 8)}`, from: connection.source, fromHandle: handle, to: connection.target }] });
+    commit(connectFlow(flow, connection));
+  }
+
+  function onReconnect(edge: Edge, connection: Connection) {
+    commit(connectFlow(flow, connection, edge.id));
+  }
+
+  function setNextStep(handle: string, target: string) {
+    if (!selected) return;
+    if (target) onConnect({ source: selected.id, sourceHandle: handle, target, targetHandle: null });
+    else commit({ ...flow, edges: flow.edges.filter((edge) => edge.from !== selected.id || edge.fromHandle !== handle) });
   }
 
   function addNode(type: FlowNodeType) {
+    if (flow.nodes.length >= 300) { onMessage("В одном сценарии может быть до 300 шагов"); return; }
     // A new step lands under the one you are looking at, and the camera follows
     // it — on a phone anything placed off-screen may as well not exist.
     const spread = flow.nodes.length * 24;
@@ -128,6 +203,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     const node = createFlowNode(type, position);
     commit({ ...flow, nodes: [...flow.nodes, node] });
     setSelectedId(node.id);
+    setInspectorTab("content");
     requestAnimationFrame(() => canvas.current?.setCenter(position.x + 116, position.y + 90, { zoom: canvas.current.getZoom(), duration: 320 }));
     if (compact) setSheet("inspector");
   }
@@ -135,6 +211,8 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   /** Buttons live inside a message, so the dock adds one to the selected step. */
   function addButton() {
     if (selected?.type !== "message") { onMessage("Сначала выберите сообщение — кнопки живут в нём"); return; }
+    if (selected.props.buttons.length >= 10) { onMessage("В сообщении может быть до 10 кнопок"); return; }
+    setInspectorTab("content");
     updateNode({ ...selected, props: { ...selected.props, buttons: [...selected.props.buttons, { id: `b${crypto.randomUUID().slice(0, 4)}`, kind: "next", label: "Кнопка" }] } });
     if (compact) setSheet("inspector");
   }
@@ -155,16 +233,17 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     { label: "Оператор", icon: UserRound, run: () => addNode("handoff") },
   ];
 
-  return <div className={`flow-screen ${compact ? "compact" : ""}`}>
+  return <div className={`flow-screen ${compact ? "compact" : ""}`} aria-busy={loading || launching}>
+    {(loading || launching) && <div className="flow-busy" role="status">{loading ? "Загружаем сценарий…" : "Сохраняем и готовим запуск…"}</div>}
     <header className="builder-top">
       <div>
-        <button className="icon-button" onClick={onBack} aria-label="Вернуться в кабинет"><ArrowLeft /></button>
+        <button className="icon-button" onClick={() => void back()} aria-label="Вернуться в кабинет"><ArrowLeft /></button>
         <span className="flow-title"><b>{flow.metadata.name}</b><small className={saveState === "error" ? "error" : ""}>{saveState === "saving" ? "Сохраняем в облаке…" : saveState === "error" ? "Ошибка сохранения" : hasSession() ? "Сохранено в облаке" : "Сохранено на этом устройстве"} · {flow.nodes.length} шагов</small></span>
       </div>
       <div />
       <div>
         <button className="outline-button" onClick={() => setSimulatorOpen(true)} aria-label="Проверить в чате"><Play /><span>Проверить в чате</span></button>
-        <button className="primary-button" disabled={saveState === "saving"} onClick={() => void launch()}><Rocket /><span>Запустить</span></button>
+        <button className="primary-button" disabled={loading || launching} onClick={() => void launch()}><Rocket /><span>Запустить</span></button>
       </div>
     </header>
 
@@ -175,7 +254,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           const Icon = icons[type];
           return <button key={type} onClick={() => addNode(type)}><span className="pal-icon"><Icon /></span><span className="pal-text"><b>{title}</b><small>{hint}</small></span><Plus /></button>;
         })}
-        <p className="flow-tip">Соедините точку справа от шага со следующим шагом. У сообщения с кнопками своя точка на каждую кнопку.</p>
+        <p className="flow-tip">Тяните линию от выхода справа ко входу сверху. Чтобы изменить цепочку, перетащите конец готовой линии на другой блок. Пробел — перемещение холста, Ctrl / ⌘ + Z — отмена.</p>
       </aside>
 
       <div className="flow-canvas">
@@ -186,9 +265,19 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={onReconnect}
+          isValidConnection={(connection) => canConnect(flow, connection)}
+          edgesReconnectable={!compact}
+          reconnectRadius={16}
+          connectOnClick
           onInit={(instance) => { canvas.current = instance; }}
-          onNodeClick={(_event, node) => { setSelectedId(node.id); if (compact) setSheet("inspector"); }}
-          onPaneClick={() => { setSelectedId(undefined); if (compact) setSheet("none"); }}
+          onNodeClick={(event, node) => {
+            if ((event.target as Element).closest(".react-flow__handle")) return;
+            setSelectedEdgeId(undefined); setSelectedId(node.id);
+            if (compact && !moveOnPhone) setSheet("inspector");
+          }}
+          onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedId(undefined); setSheet("none"); }}
+          onPaneClick={() => { setSelectedId(undefined); setSelectedEdgeId(undefined); if (compact) setSheet("none"); }}
           fitView
           proOptions={{ hideAttribution: false }}
           defaultEdgeOptions={{ animated: false, type: "smoothstep" }}
@@ -198,26 +287,62 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           minZoom={0.15}
           maxZoom={2.5}
           zoomOnPinch
-          panOnDrag
+          nodesDraggable={compact ? moveOnPhone : !panMode}
+          panOnDrag={compact || panMode ? true : [1, 2]}
+          panOnScroll={!compact}
+          selectionOnDrag={!compact && !panMode}
+          snapToGrid
+          snapGrid={[16, 16]}
+          deleteKeyCode={simulatorOpen ? null : ["Backspace", "Delete"]}
           zoomOnDoubleClick={!compact}
           // Fingers are blunt: a wider catch radius makes wiring two steps together possible at all.
           connectionRadius={compact ? 44 : 20}
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2A2A44" />
-          <Controls showInteractive={false} position={compact ? "top-right" : "bottom-left"} />
+          <Panel position="top-left" className="flow-tools" aria-label={compact ? "Управление на телефоне" : "Инструменты холста"}>
+            {compact ? <button className={moveOnPhone ? "active" : ""} aria-pressed={moveOnPhone} onClick={() => { setMoveOnPhone(!moveOnPhone); setSheet("none"); }}><Move size={17} />{moveOnPhone ? "Готово" : "Двигать блоки"}</button> : <>
+              <button className={!panMode ? "active" : ""} aria-pressed={!panMode} aria-label="Выделение и перемещение блоков" onClick={() => setPanMode(false)}><MousePointer2 size={17} /></button>
+              <button className={panMode ? "active" : ""} aria-pressed={panMode} aria-label="Перемещение холста" onClick={() => setPanMode(true)}><Hand size={17} /></button>
+            </>}
+            <button disabled={past.current.length === 0} onClick={() => travel("undo")} aria-label="Отменить действие"><Undo2 size={17} /></button>
+            <button disabled={future.current.length === 0} onClick={() => travel("redo")} aria-label="Повторить действие"><Redo2 size={17} /></button>
+          </Panel>
+          <Panel position="bottom-center" className="flow-guidance">
+            {selectedEdgeId && flow.edges.some((edge) => edge.id === selectedEdgeId) ? <>
+              <span>{compact ? "Связь выбрана" : "Тяните любой конец линии к другому блоку"}</span>
+              <button onClick={() => { commit({ ...flow, edges: flow.edges.filter((edge) => edge.id !== selectedEdgeId) }); setSelectedEdgeId(undefined); }}><Trash2 size={15} />Удалить связь</button>
+            </> : <span>{compact ? (moveOnPhone ? "Тяните карточки. Нажмите «Готово», чтобы редактировать." : "Нажмите на блок → «Следующие шаги». Два пальца — масштаб.") : "Соединяйте блоки линиями · Перетаскивайте концы, чтобы менять цепочку"}</span>}
+          </Panel>
+          <Controls showInteractive={false} position="bottom-left" />
           {/* The minimap eats a corner of a phone screen and helps nobody there. */}
           {!compact && <MiniMap pannable zoomable />}
         </ReactFlow>
       </div>
 
       <aside className={`inspector ${compact && sheet === "inspector" ? "open" : ""}`}>
-        {compact && <div className="sheet-top"><b>Настройки шага</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>}
+        {compact && <><div className="sheet-top"><b>Настройки шага</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>
+          {selected && <div className="flow-inspector-tabs" role="tablist" aria-label="Раздел настроек шага">
+            <button id="flow-content-tab" role="tab" aria-selected={inspectorTab === "content"} aria-controls="flow-content" onClick={() => setInspectorTab("content")}>Содержимое</button>
+            <button id="flow-links-tab" role="tab" aria-selected={inspectorTab === "links"} aria-controls="flow-links" onClick={() => setInspectorTab("links")}>Связи</button>
+          </div>}
+        </>}
         {selected ? <>
           <div className="inspector-title">
             <div><span className="inspector-icon">{nodeIcon(selected.type)}</span><span><b>{nodeCatalog.find((item) => item.type === selected.type)?.title}</b><small>Настройки шага</small></span></div>
-            <button className="icon-button danger" onClick={removeSelected} aria-label="Удалить шаг"><Trash2 /></button>
+            <button className="icon-button danger" disabled={selected.type === "start" && selected.props.command === "start"} onClick={removeSelected} aria-label="Удалить шаг"><Trash2 /></button>
           </div>
-          <NodeFields node={selected} update={updateNode} />
+          <div id="flow-content" hidden={compact && inspectorTab !== "content"} role={compact ? "tabpanel" : undefined} aria-labelledby={compact ? "flow-content-tab" : undefined}><NodeFields node={selected} update={updateNode} /></div>
+          <div id="flow-links" className="flow-links fields" hidden={compact && inspectorTab !== "links"} role={compact ? "tabpanel" : undefined} aria-labelledby={compact ? "flow-links-tab" : undefined}>
+            <h3>Следующие шаги</h3>
+            <p className="field-help">{compact ? "Выберите, куда ведёт каждый ответ. Линия на холсте обновится сама." : "Те же связи, что на холсте. Можно изменить назначение и здесь."}</p>
+            {exitsOf(selected).map((exit) => <Field key={exit.handle} label={exit.label}>
+              <select aria-label={`Следующий шаг: ${exit.label}`} value={flow.edges.find((edge) => edge.from === selected.id && edge.fromHandle === exit.handle)?.to ?? ""} onChange={(event) => setNextStep(exit.handle, event.target.value)}>
+                <option value="">Не соединено</option>
+                {flow.nodes.filter((node) => node.type !== "start" && node.id !== selected.id).map((node) => <option key={node.id} value={node.id}>{flow.nodes.indexOf(node) + 1}. {flowNodeLabel(node)}</option>)}
+              </select>
+            </Field>)}
+            {selected.type === "handoff" && <p className="field-help">Здесь цепочка заканчивается: дальше отвечает оператор.</p>}
+          </div>
         </> : <div className="empty-inspector"><MessageSquareText /><h3>Выберите шаг</h3><p>Нажмите на карточку на холсте — здесь появятся её настройки.</p></div>}
       </aside>
     </div>
@@ -236,7 +361,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
 }
 
 function toCanvasNodes(flow: BotFlowDocument, selectedId: string | undefined, onChange: (node: FlowNode) => void): CanvasNode[] {
-  return flow.nodes.map((node) => ({ id: node.id, type: node.type, position: node.position, selected: node.id === selectedId, data: { node, onChange } }));
+  return flow.nodes.map((node) => ({ id: node.id, type: node.type, position: node.position, selected: node.id === selectedId, deletable: !(node.type === "start" && node.props.command === "start"), data: { node, onChange } }));
 }
 
 function nodeIcon(type: FlowNodeType) { const Icon = icons[type]; return <Icon />; }
@@ -244,12 +369,16 @@ function nodeIcon(type: FlowNodeType) { const Icon = icons[type]; return <Icon /
 /* ------------------------------------------------------------------ canvas */
 
 function NodeShell({ type, title, selected, children, exits }: { type: FlowNodeType; title: string; selected?: boolean; children: React.ReactNode; exits: Array<{ handle: string; label: string }> }) {
+  const id = useNodeId();
+  const updateInternals = useUpdateNodeInternals();
+  const exitSignature = JSON.stringify(exits);
+  useEffect(() => { if (id) updateInternals(id); }, [id, exitSignature, updateInternals]);
   return <div className={`flow-node type-${type} ${selected ? "selected" : ""}`}>
-    {type !== "start" && <Handle type="target" position={Position.Top} />}
+    {type !== "start" && <Handle type="target" position={Position.Top} aria-label="Вход в шаг" />}
     <div className="flow-node-head">{nodeIcon(type)}<span>{title}</span></div>
     <div className="flow-node-body">{children}</div>
     {exits.length > 0 && <div className="flow-node-exits">
-      {exits.map((exit) => <span key={exit.handle} className="flow-exit">{exit.label}<Handle type="source" id={exit.handle} position={Position.Right} /></span>)}
+      {exits.map((exit) => <span key={exit.handle} className="flow-exit">{exit.label}<Handle type="source" id={exit.handle} position={Position.Right} aria-label={`Выход: ${exit.label}`} /></span>)}
     </div>}
   </div>;
 }

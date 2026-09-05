@@ -501,7 +501,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .flow-canvas .react-flow__controls button { border-bottom-color: var(--line); }
 .flow-canvas .react-flow__minimap { border-radius: 10px; overflow: hidden; }
 
-.flow-node { width: 232px; background: var(--paper); border: 1px solid var(--line); border-radius: 13px; box-shadow: 0 6px 18px rgba(24,17,18,.07); overflow: hidden; }
+.flow-node { width: 232px; background: var(--paper); border: 1px solid var(--line); border-radius: 13px; box-shadow: 0 6px 18px rgba(24,17,18,.07); overflow: visible; }
 .flow-node.selected { border-color: var(--brand-600); box-shadow: 0 0 0 3px var(--brand-100), 0 8px 22px rgba(196,22,42,.14); }
 .flow-node-head { display: flex; align-items: center; gap: 7px; padding: 8px 11px; font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-700); background: var(--brand-50); border-bottom: 1px solid var(--brand-100); }
 .flow-node-head svg { width: 13px; }
@@ -1702,6 +1702,41 @@ button { color: inherit; }
 .builder.compact .block-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 
 .build-dock { min-width: 0; position: relative; z-index: 14; display: flex; align-items: stretch; gap: 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
+
+/* Scenario editor: desktop tools and touch-first wiring share one document. */
+.flow-screen { font-family: Onest, ui-sans-serif, system-ui, sans-serif; }
+.flow-busy { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(10,10,18,.85); color: var(--ink); backdrop-filter: blur(5px); }
+.flow-node-head { border-radius: 12px 12px 0 0; }
+.flow-canvas .flow-node-head { font-size: 10px; }
+.flow-canvas .flow-node-body p,.flow-canvas .flow-node-body code { font-size: 12px; }
+.flow-canvas .flow-exit { min-height: 32px; font-size: 11px; }
+.flow-canvas .react-flow__handle { width: 14px; height: 14px; }
+.flow-canvas .react-flow__handle-top { top: -7px; }
+.flow-canvas .react-flow__handle.valid { background: #6FE3FF; box-shadow: 0 0 0 6px rgba(111,227,255,.2); }
+.flow-canvas .react-flow__edge.selected .react-flow__edge-path { stroke: #6FE3FF; stroke-width: 3; }
+.flow-canvas .react-flow__edge.selected .react-flow__edgeupdater { fill: rgba(111,227,255,.18); stroke: #6FE3FF; stroke-width: 1.5; cursor: grab; }
+.flow-tools { display: flex; gap: 4px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+.flow-tools button { min-width: 36px; min-height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; }
+.flow-tools button.active { background: var(--brand-100); color: var(--brand-800); }
+.flow-tools button:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.flow-tools button:disabled { opacity: .35; cursor: not-allowed; }
+.flow-guidance { display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 120px); padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--muted); font-size: 11px; line-height: 1.4; }
+.flow-guidance button { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 1px solid var(--danger-border); border-radius: 8px; color: var(--danger); background: var(--danger-bg); }
+.flow-links { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 18px; }
+.flow-links h3 { margin: 0; font-size: 14px; }
+.flow-links select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.flow-screen [hidden] { display: none !important; }
+.flow-screen .pal-text b { font-size: 12px; }
+.flow-screen .pal-text small,.flow-screen .flow-tip { font-size: 11px; }
+.flow-screen:not(.compact) .field input,.flow-screen:not(.compact) .field textarea,.flow-screen:not(.compact) .field select { font-size: 13px; }
+.flow-inspector-tabs { display: flex; gap: 6px; padding: 10px 0; }
+.flow-inspector-tabs button { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--muted); }
+.flow-inspector-tabs button[aria-selected=true] { background: var(--brand-100); color: var(--brand-800); border-color: var(--brand-200); }
+.flow-screen.compact .flow-tools { margin: 10px; }
+.flow-screen.compact .flow-tools button { min-width: 44px; min-height: 44px; }
+.flow-screen.compact .flow-guidance { max-width: calc(100% - 76px); margin-left: 24px; padding: 8px 10px; flex-direction: column; gap: 6px; font-size: 11px; }
+.flow-screen.compact .flow-links { padding-top: 18px; padding-bottom: 16px; }
+.flow-screen.compact .flow-node .react-flow__handle::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
 
 /* the tall cut owns the phone: a 4:5 frame instead of a 16:9 stamp */
 @media (max-width: 720px) {

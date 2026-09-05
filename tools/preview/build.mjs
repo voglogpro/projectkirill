@@ -7,12 +7,16 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const out = resolve(root, "preview/index.html");
 
-execFileSync("npm", ["exec", "-w", "@tma/miniapp", "--", "vite", "build", "--config", resolve(here, "vite.miniapp.config.ts")], { cwd: root, stdio: "inherit" });
+// Launch Node directly: npm is a .cmd launcher on Windows, not an executable.
+const miniRequire = createRequire(resolve(root, "apps/miniapp/package.json"));
+const viteBin = resolve(dirname(miniRequire.resolve("vite/package.json")), "bin/vite.js");
+execFileSync(process.execPath, [viteBin, "build", "--config", resolve(here, "vite.miniapp.config.ts")], { cwd: resolve(root, "apps/miniapp"), stdio: "inherit" });
 
 const webDist = resolve(root, "apps/web/dist");
 const webIndex = await readFile(resolve(webDist, "index.html"), "utf8");
@@ -25,7 +29,7 @@ const publicDir = resolve(root, "apps/web/public");
 const dataUri = async (path, type) => `data:${type};base64,${await base64(resolve(publicDir, path))}`;
 const inlinePublic = async (text) => {
   let result = text;
-  for (const [path, type] of [["media/kira-build.webm", "video/webm"], ["media/kira-build.mp4", "video/mp4"], ["media/kira-build-poster.jpg", "image/jpeg"]]) {
+  for (const [path, type] of [["media/kira-build.webm", "video/webm"], ["media/kira-build.mp4", "video/mp4"], ["media/kira-build-poster.jpg", "image/jpeg"], ["media/kira-build-tall.webm", "video/webm"], ["media/kira-build-tall.mp4", "video/mp4"], ["media/kira-build-tall-poster.jpg", "image/jpeg"]]) {
     result = result.replaceAll(`/${path}`, await dataUri(path, type));
   }
   for (const name of await readdir(resolve(publicDir, "fonts"))) {
