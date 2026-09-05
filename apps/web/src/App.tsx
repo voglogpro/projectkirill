@@ -10,11 +10,12 @@ import { Onboarding } from "./components/Onboarding";
 import { Service } from "./components/Service";
 import { PreviewModal } from "./components/PreviewModal";
 import { StartHub } from "./components/StartHub";
+import { WorkspaceShell } from "./components/WorkspaceShell";
 import { FlowEditor } from "./components/FlowEditor";
 import { createFlowFromTemplate, createStarterFlow, flowTemplateOptions, loadFlow, pageTemplateForFlow, saveFlow, type FlowTemplateId } from "./flow-store";
 import { listPreviewProjects, loadPreviewFlow, loadPreviewProject, previewIdFromUrl, savePreviewFlow } from "./local-preview";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
-import type { ProductKit, ProjectState } from "./types";
+import type { DashboardSection, ProductKit, ProjectState } from "./types";
 import { planFitsKit, priceForKit, type PaidBillingPlanCode } from "./pricing";
 
 type Screen = "landing" | "hub" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
@@ -40,8 +41,18 @@ export function App() {
   const [resumeLaunch, setResumeLaunch] = useState(false);
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [toast, setToast] = useState<string>();
+  const [section, setSection] = useState<DashboardSection>("overview");
   const [draftSaveOpen, setDraftSaveOpen] = useState(false);
   const [resumeDraftSave, setResumeDraftSave] = useState(false);
+
+  /** The sidebar stays put, so choosing a section may open an editor beside it. */
+  function openSection(next: DashboardSection) {
+    if (next === "flow") { navigate("flow"); return; }
+    if (next === "design") { navigate("builder"); return; }
+    setSection(next);
+    navigate("dashboard");
+    window.scrollTo(0, 0);
+  }
 
   const navigate = useCallback((next: Screen, replace = false, draftId?: string) => { setScreen(next); history[replace ? "replaceState" : "pushState"]({}, "", `${routeFor[next]}${draftId ? `?draft=${encodeURIComponent(draftId)}` : ""}`); window.scrollTo(0, 0); }, []);
   useEffect(() => { const pop = () => {
@@ -201,10 +212,22 @@ export function App() {
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
     {screen === "hub" && <StartHub userName={getCurrentUser()?.displayName} pending={busy} projects={[...projects, ...listPreviewProjects().map((item) => ({ id: item.id, name: `${item.name} · на устройстве` }))]} onPick={(kit, plan) => void pickKit(kit, plan)} onTemplate={(templateId) => { setIntent({ templateId, kit: "bot" }); void finishOnboarding(templateId, flowTemplateOptions.find((item) => item.id === templateId)?.title ?? "Мой бот", "bot"); }} onOpenProject={(id) => void openProject(id)} onSkip={() => void openWorkspace()} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("hub")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
-    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onReconnect={() => setLaunchOpen(true)} onHome={() => navigate("landing")} onNewProject={() => navigate("hub")} onGuide={() => navigate("hub")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
-    {project.storageMode === "local-preview" && (screen === "builder" || screen === "flow") && <nav className="local-preview-nav" aria-label="Конструкторы черновика"><span>Бесплатный черновик</span><button aria-pressed={screen === "flow"} onClick={() => navigate("flow", false, project.id)}>Бот</button><button aria-pressed={screen === "builder"} onClick={() => navigate("builder", false, project.id)}>Mini App / сайт</button><button onClick={() => navigate("hub")}>Все конструкторы</button></nav>}
-    {screen === "flow" && <FlowEditor key={project.id} localOnly={project.storageMode === "local-preview"} flow={flow} projectId={project.id} onChange={(next) => { setFlow(next); if (project.storageMode === "local-preview") savePreviewFlow(project.id, next); else saveFlow(next); }} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onLaunch={() => void launch()} onMessage={setToast} />}
-    {screen === "builder" && <Builder key={project.id} initialProject={project} onChange={updateProject} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
+    {(screen === "dashboard" || screen === "flow" || screen === "builder") && <WorkspaceShell
+      project={project}
+      active={screen === "flow" ? "flow" : screen === "builder" ? "design" : section}
+      editing={screen === "flow" || screen === "builder"}
+      primaryLabel={project.status === "active" ? "Опубликовать изменения" : "Запустить проект"}
+      onPrimary={() => void launch()}
+      onSelect={(next) => openSection(next)}
+      onNewProject={() => navigate("hub")}
+      onHome={() => navigate("landing")}
+      onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); navigate("dashboard"); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }}
+    >
+      {screen === "dashboard" && <Dashboard project={project} section={section} onSelect={openSection} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onReconnect={() => setLaunchOpen(true)} onGuide={() => navigate("hub")} onMessage={setToast} />}
+      {project.storageMode === "local-preview" && (screen === "builder" || screen === "flow") && <nav className="local-preview-nav" aria-label="Конструкторы черновика"><span>Бесплатный черновик</span><button aria-pressed={screen === "flow"} onClick={() => navigate("flow", false, project.id)}>Бот</button><button aria-pressed={screen === "builder"} onClick={() => navigate("builder", false, project.id)}>Mini App / сайт</button><button onClick={() => navigate("hub")}>Все конструкторы</button></nav>}
+      {screen === "flow" && <FlowEditor key={project.id} localOnly={project.storageMode === "local-preview"} flow={flow} projectId={project.id} onChange={(next) => { setFlow(next); if (project.storageMode === "local-preview") savePreviewFlow(project.id, next); else saveFlow(next); }} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onLaunch={() => void launch()} onMessage={setToast} />}
+      {screen === "builder" && <Builder key={project.id} initialProject={project} onChange={updateProject} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
+    </WorkspaceShell>}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => { setAuthOpen(false); setResumeDraftSave(false); setResumeLaunch(false); }} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); setResumeDraftSave(false); setResumeLaunch(false); navigate("onboarding"); }} />}
     {launchOpen && <LaunchModal projectId={project.id} projectKit={project.kit ?? "bot"} legacyFullAccessUntil={project.legacyFullAccessUntil} initialPlan={project.plan === "free" ? intent.plan : project.plan} existingBot={project.botUsername && project.botStatus === "active" ? { username: project.botUsername, miniAppUrl: project.miniAppUrl } : undefined} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl, botStatus: "active", previewed: true, hasPendingChanges: false }); setToast("Бот опубликован и готов принимать клиентов"); }} />}
     {previewOpen && <PreviewModal project={project} onClose={() => setPreviewOpen(false)} />}

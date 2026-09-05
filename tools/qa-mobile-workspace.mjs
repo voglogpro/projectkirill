@@ -72,13 +72,13 @@ try {
     assert.equal(await page.getByRole('button', { name: 'Ещё', exact: true }).evaluate((element) => element === document.activeElement), true);
     await page.locator('.mobile-nav').getByRole('button', { name: 'Главная', exact: true }).click();
     await page.screenshot({ path: fileURLToPath(new URL(`workspace-${engine}-${width}.png`, output)) });
-    await page.locator('.mobile-nav').getByRole('button', { name: 'Редактор', exact: true }).click();
+    await page.locator('.mobile-nav').getByRole('button', { name: 'Сценарий', exact: true }).click();
     await page.waitForURL('**/flow');
     await page.goto(`${base}/workspace?kit=site`);
     await page.getByRole('button', { name: 'Ещё', exact: true }).click();
     assert.equal(await menu.getByRole('button', { name: 'Сценарий', exact: true }).count(), 0, 'Site menu must not offer a text-bot canvas');
     await menu.getByRole('button', { name: 'Закрыть меню проекта' }).click();
-    await page.locator('.status-banner').getByRole('button', { name: 'Продолжить' }).click();
+    await page.locator('.crm-head-actions').getByRole('button', { name: 'Конструктор', exact: true }).click();
     await page.waitForURL('**/builder');
 
     await page.goto(base);

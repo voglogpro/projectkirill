@@ -192,3 +192,21 @@
   .hub-v2-kit-cta > svg { flex: none; width: 15px; }
   .hub-v2 .hub-v2-pricing-note { font-size: 11px; line-height: 1.6; }
 }
+
+/* The first screen after login has to say where you are and what you get. */
+.hub-v2-what { list-style: none; display: grid; gap: 8px; padding: 0; margin: 4px 0 0; }
+.hub-v2-what li { display: flex; align-items: flex-start; gap: 10px; color: #b7b2d4; font-size: 13.5px; line-height: 1.45; }
+.hub-v2-what li > span { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 8px; background: rgba(124,92,255,.16); color: #c4b5fd; }
+.hub-v2-what b { color: #f2f0ff; font-weight: 700; white-space: nowrap; }
+.hub-v2-next { margin: 12px 0 0; color: #8f8bb0; font-size: 12.5px; }
+
+@media (max-width: 720px) {
+  /* Air between the header, the name and the first line of copy. */
+  .hub-v2 .hub-v2-content { padding-top: 22px; }
+  .hub-v2 .hub-v2-guide .hub-v2-heading { gap: 12px; margin-bottom: 18px; }
+  .hub-v2 .hub-v2-guide h1 { margin-top: 2px; line-height: 1.2; }
+  .hub-v2 .hub-v2-guide .hub-v2-heading > p { font-size: 14px; line-height: 1.55; }
+  .hub-v2-what { gap: 9px; margin-top: 6px; }
+  .hub-v2-what li { font-size: 13px; }
+  .hub-v2-next { margin-top: 10px; }
+}

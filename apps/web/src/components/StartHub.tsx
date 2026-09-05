@@ -51,7 +51,14 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
           <div className="hub-v2-heading">
             <span className="hub-v2-eyebrow">KIRA · КОНСТРУКТОР БЕЗ КОДА</span>
             <h1 id="hub-guide-title">Создайте бота,<br />Mini App или сайт</h1>
-            <p><span className="hub-v2-copy-desktop">{userName ? `${userName}, соберите` : "Соберите"} и проверьте бесплатно. Оплата — только за запуск для клиентов.</span><span className="hub-v2-copy-mobile">Собирайте бесплатно. Платите только за запуск.</span></p>
+            <p><span className="hub-v2-copy-desktop">{userName ? `${userName}, соберите` : "Соберите"} и проверьте бесплатно. Оплата — только за запуск для клиентов.</span><span className="hub-v2-copy-mobile">Это ваш кабинет KIRA. Соберите и проверьте бесплатно — платите только за запуск.</span></p>
+            {/* On a phone this is the first screen after login: say plainly what the three formats do. */}
+            <ul className="hub-v2-what">
+              <li><span><MessageSquareText size={15} /></span><b>Бот</b> отвечает клиентам в Telegram и собирает заявки</li>
+              <li><span><Smartphone size={15} /></span><b>Mini App</b> — витрина, каталог и формы прямо в чате</li>
+              <li><span><LayoutGrid size={15} /></span><b>Сайт</b> — те же страницы по обычной ссылке</li>
+            </ul>
+            <p className="hub-v2-next">Дальше выберите формат — редактор откроется сразу и бесплатно.</p>
           </div>
           {firstProject && <button type="button" className="hub-v2-resume" onClick={() => onOpenProject(firstProject.id)} disabled={pending}>
             <span className="hub-v2-project-icon">{firstProject.name.slice(0, 1).toUpperCase()}</span>

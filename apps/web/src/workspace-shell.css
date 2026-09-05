@@ -1,0 +1,51 @@
+/* One frame for the cabinet: the sidebar keeps its place while an editor works
+   beside it, instead of the editor taking over the whole window. */
+.workspace { grid-template-columns: 238px minmax(0, 1fr); }
+.workspace-main { min-width: 0; display: flex; flex-direction: column; }
+.workspace-main > * { min-width: 0; }
+
+/* An editor owns the height of the work area but never the page's chrome. */
+.workspace.is-editing { height: 100dvh; overflow: hidden; }
+.workspace.is-editing .workspace-main { height: 100dvh; min-height: 0; }
+.workspace.is-editing .flow-screen,
+.workspace.is-editing .builder { height: 100%; min-height: 0; }
+.workspace.is-editing .app-sidebar { height: 100dvh; overflow-y: auto; }
+
+/* The editor already carries a back arrow into the cabinet; on a desktop the
+   sidebar does that job, so the arrow only shows where the sidebar is hidden. */
+.workspace.is-editing .builder-top > div:first-child > .icon-button { display: none; }
+
+.app-sidebar nav button.active { background: var(--brand-100); color: var(--brand-800); }
+
+@media (max-width: 720px) {
+  .workspace.is-editing { height: 100dvh; overflow: hidden; }
+  .workspace.is-editing .workspace-main { height: 100dvh; }
+  .workspace.is-editing .flow-screen,
+  .workspace.is-editing .builder { height: 100dvh; }
+  /* On a phone the bottom row belongs to the editor's own tools. */
+  .workspace.is-editing .mobile-nav,
+  .workspace.is-editing .mobile-workspace-bar { display: none; }
+  .workspace.is-editing .builder-top > div:first-child > .icon-button { display: grid; }
+}
+
+/* ============================================================
+   The editor's menu on a phone: four full-size targets, and one
+   sheet that shows what each step is for.
+   ============================================================ */
+.editor-dock { position: relative; z-index: 14; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 7px max(8px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: var(--paper); }
+.editor-dock button { min-height: 58px; display: grid; justify-items: center; align-content: center; gap: 4px; padding: 6px 4px; border: 0; border-radius: 13px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; }
+.editor-dock button svg { width: 21px; height: 21px; }
+.editor-dock button.on { background: var(--brand-100); color: var(--brand-800); }
+.editor-dock button:active { background: var(--surface-2); }
+
+.editor-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 16; padding: 0 16px 18px; border-top: 1px solid var(--line); border-radius: 22px 22px 0 0; background: var(--paper); box-shadow: 0 -22px 54px rgb(0 0 0 / 55%); transform: translateY(102%); visibility: hidden; transition: transform .24s ease, visibility .24s; }
+.editor-sheet.open { transform: none; visibility: visible; }
+.editor-sheet .sheet-top { margin-inline: -16px; padding-inline: 16px; }
+.editor-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding-top: 12px; }
+.editor-sheet-grid button { min-height: 92px; display: grid; align-content: start; gap: 3px; padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-2); color: var(--ink); text-align: left; font: inherit; }
+.editor-sheet-grid button:active { border-color: var(--brand-600); background: var(--brand-100); }
+.editor-sheet-grid span { width: 32px; height: 32px; display: grid; place-items: center; margin-bottom: 5px; border-radius: 10px; background: var(--brand-100); color: var(--brand-800); }
+.editor-sheet-grid svg { width: 17px; }
+.editor-sheet-grid b { font-size: 14px; }
+.editor-sheet-grid small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.editor-sheet-note { margin: 12px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }

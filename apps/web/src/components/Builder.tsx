@@ -1,10 +1,15 @@
-import { ArrowDown, ArrowLeft, ArrowUp, Box, ChevronDown, Eye, FileText, GripVertical, Heading1, Image, LayoutGrid, MessageSquareText, MousePointerClick, Pencil, Plus, Redo2, Rocket, Send, ShoppingBag, SlidersHorizontal, Smartphone, Trash2, Undo2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Box, ChevronDown, Eye, FileText, GripVertical, Heading1, Image, LayoutDashboard, LayoutGrid, MessageSquareText, MousePointerClick, Pencil, Plus, Redo2, Rocket, Send, ShoppingBag, SlidersHorizontal, Smartphone, Trash2, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteRemotePage, hasSession, saveRemoteProject } from "../api";
 import { createBlock, saveProject } from "../store";
 import { useCompact } from "../use-compact";
 import type { BlockAction, BlockType, BuilderBlock, BuilderPage, BuilderTab, FormField, ProjectState } from "../types";
 import { PhonePreview } from "./PhonePreview";
+
+const blockHint: Record<BlockType, string> = {
+  heading: "Крупная строка", text: "Абзац описания", button: "Действие или ссылка",
+  media: "Фото или иллюстрация", product: "Название, цена, кнопка", form: "Собрать контакты",
+};
 
 const blockCatalog: Array<{ type: BlockType; title: string; icon: typeof Heading1 }> = [
   { type: "heading", title: "Заголовок", icon: Heading1 }, { type: "text", title: "Текст", icon: MessageSquareText }, { type: "button", title: "Кнопка", icon: MousePointerClick }, { type: "media", title: "Картинка", icon: Image }, { type: "product", title: "Товар", icon: ShoppingBag }, { type: "form", title: "Форма", icon: Send },
@@ -17,7 +22,7 @@ export function Builder({ initialProject, onChange, onBack, onPreview, onLaunch,
   const [previewMode, setPreviewMode] = useState<"miniapp" | "site">(initialProject.kit === "site" ? "site" : "miniapp");
   const [tab, setTab] = useState<BuilderTab>("blocks");
   const compact = useCompact();
-  const [sheet, setSheet] = useState<"none" | "pages" | "inspector">("none");
+  const [sheet, setSheet] = useState<"none" | "pages" | "inspector" | "add">("none");
   const [history, setHistory] = useState<ProjectState[]>([]);
   const [future, setFuture] = useState<ProjectState[]>([]);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
@@ -69,15 +74,25 @@ export function Builder({ initialProject, onChange, onBack, onPreview, onLaunch,
   </aside>
   <main className={`canvas ${theme}`}><div className="canvas-toolbar"><div className="theme-toggle" aria-label="Вид конструктора"><button className={previewMode === "miniapp" ? "active" : ""} aria-pressed={previewMode === "miniapp"} onClick={() => setPreviewMode("miniapp")}>Mini App</button><button className={previewMode === "site" ? "active" : ""} aria-pressed={previewMode === "site"} onClick={() => setPreviewMode("site")}>Сайт</button></div><div className="theme-toggle"><button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}>Светлая</button><button className={theme === "dark" ? "active" : ""} onClick={() => setTheme("dark")}>Тёмная</button></div></div><PhonePreview page={activePage} projectName={project.name} selectedId={selectedId} onSelect={setSelectedId} theme={theme} mode={previewMode} /></main>
   <aside className={`inspector ${compact && sheet === "inspector" ? "open" : ""}`}>{compact && <div className="sheet-top"><b>Настройки блока</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>}{selected ? <><div className="inspector-title"><div><span className="inspector-icon"><Box /></span><span><b>{blockCatalog.find((item) => item.type === selected.type)?.title}</b><small>Настройки блока</small></span></div><button className="icon-button danger" onClick={removeSelected} aria-label="Удалить блок"><Trash2 /></button></div><InspectorFields block={selected} pages={project.pages} update={updateSelected} /><div className="inspector-tip"><span>✦</span><p><b>Подсказка</b>Пишите коротко: Mini App чаще открывают с телефона и на мобильном интернете.</p></div></> : <div className="empty-inspector"><MousePointerClick /><h3>Выберите блок</h3><p>Нажмите на элемент в телефоне или в структуре слева.</p></div>}</aside>
-  </div>{compact && <nav className="build-dock" aria-label="Что добавить на страницу">
-    <div className="dock-add">
-      {blockCatalog.map(({ type, title, icon: Icon }) => <button key={type} onClick={() => addBlock(type)}><span><Icon /></span>{title}</button>)}
-      <button onClick={() => { setTab("pages"); setSheet("pages"); }}><span><FileText /></span>Страницы</button>
+  </div>{compact && <>
+    {/* One sheet for adding blocks: full-size targets that say what each one is. */}
+    <div className={`editor-sheet ${sheet === "add" ? "open" : ""}`} role="dialog" aria-label="Добавить блок" aria-hidden={sheet !== "add"}>
+      <div className="sheet-top"><b>Добавить блок</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>
+      <div className="editor-sheet-grid">
+        {blockCatalog.map(({ type, title, icon: Icon }) => <button key={type} onClick={() => addBlock(type)}>
+          <span><Icon /></span><b>{title}</b><small>{blockHint[type]}</small>
+        </button>)}
+      </div>
+      <p className="editor-sheet-note">Блок встаёт в конец страницы, а его настройки открываются сразу. Порядок меняется стрелками в разделе «Страницы».</p>
     </div>
-    <button className={`dock-settings ${sheet === "inspector" ? "on" : ""}`} onClick={() => setSheet(sheet === "inspector" ? "none" : "inspector")}>
-      <SlidersHorizontal />{sheet === "inspector" ? "Свернуть" : "Настройки"}
-    </button>
-  </nav>}</div>;
+
+    <nav className="editor-dock" aria-label="Меню редактора">
+      <button className={sheet === "add" ? "on" : ""} onClick={() => setSheet(sheet === "add" ? "none" : "add")}><Plus /><span>Добавить</span></button>
+      <button className={sheet === "pages" ? "on" : ""} onClick={() => { setTab("pages"); setSheet(sheet === "pages" ? "none" : "pages"); }}><FileText /><span>Страницы</span></button>
+      <button className={sheet === "inspector" ? "on" : ""} onClick={() => setSheet(sheet === "inspector" ? "none" : "inspector")}><SlidersHorizontal /><span>Настройки</span></button>
+      <button onClick={onBack}><LayoutDashboard /><span>Кабинет</span></button>
+    </nav>
+  </>}</div>;
 }
 
 function InspectorFields({ block, pages, update }: { block: BuilderBlock; pages: BuilderPage[]; update: (block: BuilderBlock) => void }) {

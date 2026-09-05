@@ -50,6 +50,8 @@ try {
         }
         if (path === `/v1/projects/${projectId}` && request.method() === "PATCH") return route.fulfill({ json: { data: project } });
         if (path === "/v1/billing/entitlement") return route.fulfill({ json: { data: ent } });
+        // The cabinet's sidebar stays visible next to the editor, so it lists projects there too.
+        if (path === "/v1/projects" && request.method() === "GET") return route.fulfill({ json: { data: [project] } });
         if (path === "/v1/bot-connections/validate") return route.fulfill({ json: { data: { botId: "123456789", firstName: "QA fake bot", username: "qa_fake_bot" } } });
         if (path === "/v1/billing/checkouts") {
           checkouts.push(request.postDataJSON());

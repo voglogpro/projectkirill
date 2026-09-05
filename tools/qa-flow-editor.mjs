@@ -120,7 +120,7 @@ try {
   assert.equal(await phone.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await phone.page.screenshot({ path: fileURLToPath(new URL("flow-phone-settings.png", output)), fullPage: true });
   await phone.page.getByRole("button", { name: "Закрыть", exact: true }).tap();
-  await phone.page.getByRole("button", { name: "Двигать блоки", exact: true }).tap();
+  await phone.page.getByRole("button", { name: "Двигать", exact: true }).tap();
   assert.equal(await phone.page.getByRole("button", { name: "Готово", exact: true }).getAttribute("aria-pressed"), "true");
   const touchBox = await node(phone.page, ids.message).locator(".flow-node-head").boundingBox();
   const phoneBefore = (await documentOf(phone.page)).nodes.find((item) => item.id === ids.message).position;

@@ -42,6 +42,8 @@ async function open(width, height) {
       if (url.pathname === `/v1/projects/${project.id}/pages`) return route.fulfill({ json: { data: project.pages.map((page) => ({ ...page, revision: 1, document: { blocks: page.blocks } })) } });
       if (url.pathname === `/v1/projects/${project.id}/flow`) return route.fulfill({ json: { data: { document: flow, revision: 1 } } });
       if (url.pathname === `/v1/bot-connections/${project.id}`) return route.fulfill({ json: { data: null } });
+      // The cabinet's front page shows the inbox count, so it reads submissions.
+      if (url.pathname === `/v1/projects/${project.id}/submissions`) return route.fulfill({ json: { data: [] } });
       if (url.pathname === "/v1/billing/entitlement") return route.fulfill({ json: { data: { planCode: "free", maxProjects: 1, maxActiveBots: 0, canPublish: false } } });
       unexpectedReads.push(url.pathname);
       return route.fulfill({ status: 404, json: { error: { message: "Outside mocked QA scope" } } });
@@ -177,9 +179,13 @@ try {
       // Wait for the desktop smooth anchor to arrive, not only its first pixel.
       await page.waitForFunction(() => { const video = document.getElementById('hub-video'); const rect = video.getBoundingClientRect(); const margin = parseFloat(getComputedStyle(video).scrollMarginTop) + parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop); const target = Math.min(margin, rect.top + scrollY); return Math.abs(rect.top - target) < 3; });
     }
+    // The player pauses itself when it leaves the screen, so bring it into view first.
+    await page.locator('#hub-video').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => document.querySelector('#hub-video video').readyState >= 2);
     if (await page.locator('#hub-video video').evaluate(video => video.paused)) await page.getByRole('button', { name: 'Воспроизвести видео', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('#hub-video video').paused);
     await page.getByRole('button', { name: 'Приостановить видео', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('#hub-video video').paused, undefined, { timeout: 4000 }).catch(() => undefined);
     assert(await page.locator('#hub-video video').evaluate(video => video.paused), 'Hub video plays and pauses');
     if (width < 600) {
       await page.locator('.hub-v2-video-toggle').click();

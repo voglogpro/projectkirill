@@ -142,6 +142,8 @@ export async function loadRemoteProject(projectId: string, plan: ProjectState["p
     request<{ data: { botUsername?: string; miniAppUrl?: string; status: BotConnectionStatus } | null }>(`/v1/bot-connections/${projectId}`).catch(() => ({ data: null })),
     getEntitlement().catch(() => ({ planCode: plan, maxProjects: 1, maxActiveBots: 0, canPublish: false })),
   ]);
+  // A server that answers with an empty envelope must not take the cabinet down.
+  if (project.data == null) throw new Error("Проект не найден. Обновите страницу или выберите другой проект.");
   const publishedAt = project.data.updatedAt === undefined ? 0 : Date.parse(project.data.updatedAt);
   const hasPendingChanges = project.data.publishedReleaseId != null && pages.data.some((page) => page.updatedAt !== undefined && Date.parse(page.updatedAt) > publishedAt);
   return { id: project.data.id, name: project.data.name, kit: project.data.kit, legacyFullAccessUntil: project.data.legacyFullAccessUntil, status: project.data.status, plan: entitlement.planCode, updatedAt: project.data.updatedAt, hasPendingChanges, botUsername: bot.data?.botUsername, miniAppUrl: project.data.kit === "site" && project.data.publicId ? `${location.origin}/s/${project.data.publicId}` : bot.data?.miniAppUrl, botStatus: bot.data?.status, activePageId: pages.data[0]?.id, pages: pages.data.map((page) => ({ id: page.id, title: page.title, slug: page.slug, blocks: page.document.blocks, remoteRevision: page.revision })) };

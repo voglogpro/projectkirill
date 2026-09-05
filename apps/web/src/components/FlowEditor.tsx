@@ -1,6 +1,6 @@
 import { applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, Controls, Handle, MarkerType, MiniMap, Panel, Position, ReactFlow, useNodeId, useUpdateNodeInternals, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ArrowLeft, CircleHelp, Clock, GitBranch, Hand, MessageSquareText, MousePointer2, MousePointerClick, Move, Play, Plus, Redo2, Rocket, SlidersHorizontal, Trash2, Undo2, UserRound, X } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock, GitBranch, Hand, LayoutDashboard, MessageSquareText, MousePointer2, MousePointerClick, Move, Play, Plus, Redo2, Rocket, SlidersHorizontal, Trash2, Undo2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
 import { hasSession, loadRemoteFlow, saveRemoteFlow } from "../api";
@@ -24,7 +24,7 @@ export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBac
   const [selectedId, setSelectedId] = useState<string | undefined>(flow.nodes[1]?.id ?? flow.nodes[0]?.id);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const compact = useCompact();
-  const [sheet, setSheet] = useState<"none" | "inspector">("none");
+  const [sheet, setSheet] = useState<"none" | "inspector" | "add">("none");
   const [inspectorTab, setInspectorTab] = useState<"content" | "links">("content");
   const [panMode, setPanMode] = useState(false);
   const [moveOnPhone, setMoveOnPhone] = useState(false);
@@ -227,13 +227,13 @@ export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBac
     setSelectedId(undefined);
   }
 
-  const dock = [
-    { label: "Сообщение", icon: MessageSquareText, run: () => addNode("message") },
-    { label: "Кнопка", icon: MousePointerClick, run: addButton },
-    { label: "Вопрос", icon: CircleHelp, run: () => addNode("question") },
-    { label: "Развилка", icon: GitBranch, run: () => addNode("choice") },
-    { label: "Пауза", icon: Clock, run: () => addNode("delay") },
-    { label: "Оператор", icon: UserRound, run: () => addNode("handoff") },
+  const additions = [
+    { label: "Сообщение", hint: "Текст и кнопки", icon: MessageSquareText, run: () => addNode("message") },
+    { label: "Кнопка", hint: "В выбранное сообщение", icon: MousePointerClick, run: addButton },
+    { label: "Вопрос", hint: "Ответ в переменную", icon: CircleHelp, run: () => addNode("question") },
+    { label: "Развилка", hint: "Условие по ответу", icon: GitBranch, run: () => addNode("choice") },
+    { label: "Пауза", hint: "Подождать перед ответом", icon: Clock, run: () => addNode("delay") },
+    { label: "Оператор", hint: "Передать человеку", icon: UserRound, run: () => addNode("handoff") },
   ];
 
   return <div className={`flow-screen ${compact ? "compact" : ""}`} aria-busy={loading || launching}>
@@ -303,7 +303,7 @@ export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBac
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2A2A44" />
           <Panel position="top-left" className="flow-tools" aria-label={compact ? "Управление на телефоне" : "Инструменты холста"}>
-            {compact ? <button className={moveOnPhone ? "active" : ""} aria-pressed={moveOnPhone} onClick={() => { setMoveOnPhone(!moveOnPhone); setSheet("none"); }}><Move size={17} />{moveOnPhone ? "Готово" : "Двигать блоки"}</button> : <>
+            {compact ? null : <>
               <button className={!panMode ? "active" : ""} aria-pressed={!panMode} aria-label="Выделение и перемещение блоков" onClick={() => setPanMode(false)}><MousePointer2 size={17} /></button>
               <button className={panMode ? "active" : ""} aria-pressed={panMode} aria-label="Перемещение холста" onClick={() => setPanMode(true)}><Hand size={17} /></button>
             </>}
@@ -350,14 +350,25 @@ export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBac
       </aside>
     </div>
 
-    {compact && <nav className="flow-dock" aria-label="Что добавить">
-      <div className="dock-add">
-        {dock.map(({ label, icon: Icon, run }) => <button key={label} onClick={run}><span><Icon /></span>{label}</button>)}
+    {compact && <>
+      {/* One sheet for adding steps: six full-size targets instead of a row of chips. */}
+      <div className={`editor-sheet ${sheet === "add" ? "open" : ""}`} role="dialog" aria-label="Добавить шаг" aria-hidden={sheet !== "add"}>
+        <div className="sheet-top"><b>Добавить шаг</b><button className="icon-button" onClick={() => setSheet("none")} aria-label="Закрыть"><X /></button></div>
+        <div className="editor-sheet-grid">
+          {additions.map(({ label, hint, icon: Icon, run }) => <button key={label} onClick={() => { run(); }}>
+            <span><Icon /></span><b>{label}</b><small>{hint}</small>
+          </button>)}
+        </div>
+        <p className="editor-sheet-note">Новый шаг встаёт под выбранным, и холст сам едет к нему. Соединить шаги можно на холсте или в «Настройках» → «Следующие шаги».</p>
       </div>
-      <button className={`dock-settings ${sheet === "inspector" ? "on" : ""}`} onClick={() => setSheet(sheet === "inspector" ? "none" : "inspector")}>
-        <SlidersHorizontal />{sheet === "inspector" ? "Свернуть" : "Настройки"}
-      </button>
-    </nav>}
+
+      <nav className="editor-dock" aria-label="Меню редактора">
+        <button className={sheet === "add" ? "on" : ""} onClick={() => setSheet(sheet === "add" ? "none" : "add")}><Plus /><span>Добавить</span></button>
+        <button className={moveOnPhone ? "on" : ""} aria-pressed={moveOnPhone} onClick={() => { setMoveOnPhone(!moveOnPhone); setSheet("none"); }}><Move /><span>{moveOnPhone ? "Готово" : "Двигать"}</span></button>
+        <button className={sheet === "inspector" ? "on" : ""} onClick={() => setSheet(sheet === "inspector" ? "none" : "inspector")}><SlidersHorizontal /><span>Настройки</span></button>
+        <button onClick={onBack}><LayoutDashboard /><span>Кабинет</span></button>
+      </nav>
+    </>}
 
     {simulatorOpen && <FlowSimulator flow={flow} onClose={() => setSimulatorOpen(false)} />}
   </div>;
