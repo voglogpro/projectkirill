@@ -4,6 +4,7 @@ import type { FlowTemplateId } from "../flow-store";
 import { TemplateCatalog } from "./TemplateCatalog";
 import type { PaidBillingPlanCode } from "../pricing";
 import { PriceSummary } from "./PriceSummary";
+import "../landing-layout.css";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: PaidBillingPlanCode };
 
@@ -12,9 +13,9 @@ type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; p
  * gets its own section right under the hero.
  */
 const pieces = [
-  { icon: MessageSquareText, tag: "ОСНОВА", title: "Текстовый бот", text: "Разговор в Telegram: сообщения, кнопки, вопросы, развилки. С него начинают все — этого одного уже хватает, чтобы принимать заявки.", note: "Входит в оба тарифа" },
-  { icon: Smartphone, tag: "ЭКРАНЫ", title: "Mini App", text: "Приложение внутри Telegram: каталог, карточки и формы заявок. Бот открывает его кнопкой — выходить из мессенджера не нужно.", note: "Собирается блоками, как страница" },
-  { icon: Globe, tag: "ССЫЛКА", title: "Сайт", text: "Те же экраны по обычной ссылке — для тех, кто не в Telegram. Отдельно верстать ничего не надо: контент один и тот же.", note: "Готов сразу после публикации" },
+  { icon: MessageSquareText, tag: "ОСНОВА", title: "Текстовый бот", text: "Сообщения, кнопки и развилки. Принимает заявки прямо в чате Telegram.", note: "Сборка и проверка бесплатны" },
+  { icon: Smartphone, tag: "ЭКРАНЫ", title: "Mini App", text: "Каталог, карточки и формы внутри Telegram. Открывается кнопкой бота.", note: "Собирается из блоков" },
+  { icon: Globe, tag: "ССЫЛКА", title: "Сайт", text: "Ваши страницы по обычной ссылке. Контент общий с Mini App.", note: "Доступен после публикации" },
 ];
 
 const steps = [
@@ -55,13 +56,13 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="hero" id="top">
         <div className="hero-copy">
           <div className="eyebrow"><Sparkles size={15} /> БОТ · MINI APP · САЙТ В ОДНОМ КАБИНЕТЕ</div>
-          <h1>Соберите бота,<br /><em>который нужен вам</em></h1>
-          <p>Заявки, запись, магазин, обучение, поддержка. Соберите разговор из блоков, проверьте и подключите своего бота. Рядом — Mini App и сайт на том же контенте. Хостинг внутри платформы.</p>
+          <h1>Ваш бот.<br /><em>Ваш Mini App.<br />Без кода.</em></h1>
+          <p>Для заявок, записи и продаж. Возьмите готовый сценарий или соберите свой — бот, Mini App и сайт в одном кабинете.</p>
+          <div className="hero-mobile-price"><span>Один бот <strong>350 ₽/мес</strong></span><span>С Mini App <strong>650 ₽/мес</strong></span><a href="#pricing">Все тарифы →</a></div>
           <div className="hero-actions">
             <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
             <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
           </div>
-          <PriceSummary href="#pricing" />
           <ul className="hero-chips">
             <li><Check size={14} /> Без кода</li>
             <li><Check size={14} /> Без карты на старте</li>
@@ -70,6 +71,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
           </ul>
         </div>
         <BuildLoop />
+        <PriceSummary href="#pricing" />
       </section>
 
       <section className="pieces" id="pieces">
@@ -148,17 +150,18 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
   </div>;
 }
 
-/** The rendered build, playing like a GIF: no controls, no sound, no chrome. */
+/** Silent demonstration with explicit pause and reduced-motion support. */
 function BuildLoop() {
   const video = useRef<HTMLVideoElement>(null);
-  const [reduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [paused, setPaused] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [playing, setPlaying] = useState(false);
   const tall = useTallFrame();
 
   useEffect(() => {
     const element = video.current;
     if (element === null) return;
     element.muted = true; // React does not reflect the attribute, and autoplay needs it
-    if (reduced) return;
+    if (paused) { element.pause(); return; }
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) void element.play().catch(() => { /* the poster stays */ });
@@ -167,10 +170,10 @@ function BuildLoop() {
     }, { threshold: 0.25 });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [reduced, tall]);
+  }, [paused, tall]);
 
   return <figure className={`build-loop ${tall ? "tall" : ""}`}>
-    <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em></figcaption>
+    <figcaption className="loop-title"><i />ВИДЕО-ПРИМЕР<em>21 секунда</em><button type="button" className="loop-toggle" onClick={() => { setPaused(playing); if (playing) video.current?.pause(); else void video.current?.play().catch(() => { /* Allow another explicit attempt. */ }); }} aria-label={playing ? "Приостановить видео" : "Воспроизвести видео"}>{playing ? "Пауза" : "Смотреть"}</button></figcaption>
     <span className="loop-glow" aria-hidden="true" />
     <video
       // A 16:9 frame on a phone is a stamp. The same story is cut 4:5 for
@@ -181,9 +184,10 @@ function BuildLoop() {
       muted
       loop
       playsInline
-      autoPlay={!reduced}
+      autoPlay={!paused}
+      onPlay={() => setPlaying(true)}
+      onPause={() => setPlaying(false)}
       preload="metadata"
-      controls={reduced}
       aria-label="Как в KIRA собирается бот и Mini App"
     >
       <source src={tall ? "/media/kira-build-tall.webm" : "/media/kira-build.webm"} type="video/webm" />

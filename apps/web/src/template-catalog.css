@@ -5,9 +5,11 @@
 .tcatalog-position { color: #aaa6c6; font: 400 12px Onest, sans-serif; min-width: 42px; text-align: center; }
 .tcatalog-grid.is-carousel { touch-action: pan-y; }
 .tcatalog-window { min-width: 0; }
-.is-carousel-window { overflow: hidden; padding: 6px 0; }
+.is-carousel-window { overflow: hidden; padding: 6px 0; max-width: 1040px; margin-inline: auto; }
+.tcard-slot { min-width: 0; position: relative; }
+.tcard-slot > .tcard { height: 100%; box-sizing: border-box; }
 .tcatalog-grid.is-carousel .tcard { transition: filter .2s, opacity .2s, transform .2s; transform-origin: center; }
-.tcatalog-grid.is-carousel .tcard:not(.is-focused) { filter: blur(2px); opacity: .5; transform: scale(.95); }
+.tcatalog-grid.is-carousel .tcard:not(.is-focused) { filter: blur(1px); opacity: .65; transform: scale(.95); }
 .tcatalog-grid.is-carousel .tcard.is-focused { filter: none; opacity: 1; transform: none; border-color: var(--card-accent); }
 @media (prefers-reduced-motion: reduce) { .tcatalog-grid.is-carousel .tcard { transition: none; } }
 @media (max-width: 760px) {
@@ -17,7 +19,7 @@
   .tcatalog-grid.is-carousel .tcard-visual { height: 150px; }
   .tcatalog-grid.is-carousel .tcard-tags { margin-top: 0; }
   .tcatalog-grid.is-carousel.has-neighbors { display: flex; gap: 12px; transform: translateX(calc(-100% + 60px)); }
-  .tcatalog-grid.is-carousel.has-neighbors .tcard { flex: 0 0 calc(100% - 48px); }
+  .tcatalog-grid.is-carousel.has-neighbors .tcard-slot { flex: 0 0 calc(100% - 48px); }
 }
 .tcatalog *, .tcatalog-preview-root * { box-sizing: border-box; }
 .tcatalog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
@@ -129,3 +131,37 @@
   .tcard-actions button { min-height: 44px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .tcard { transition: none; } }
+
+/* The carousel is a compact chooser. Expanded setup retains the full instructions. */
+.tcatalog-grid.is-carousel .tcard-visual { height: 140px; padding-bottom: 28px; }
+.tcatalog-grid.is-carousel .tcard-content { padding: 12px 14px; }
+.tcatalog-grid.is-carousel .tcard-content h3 { font: 700 18px/1.25 Onest, sans-serif; margin: 7px 0; }
+.tcatalog-grid.is-carousel .tcard-content > p:not(.tcard-outcome) { display: none; }
+.tcatalog-grid.is-carousel .tcard-content > .tcard-outcome { font-size: 12px; line-height: 1.45; padding: 7px 9px; margin-bottom: 10px; min-height: 49px; }
+.tcatalog-grid.is-carousel .tcard-tags { display: none; }
+.tcatalog-grid.is-carousel .tcard-setup { margin: auto 0 8px; }
+.tcatalog-grid.is-carousel .tcard-actions { flex-direction: row; }
+.tcatalog-grid.is-carousel .tcard-actions button { flex: 1; min-width: 0; min-height: 44px; }
+.tcard-details-description { color: #b2afca; font-size: 12px; line-height: 1.5; }
+.tcatalog-grid:not(.is-carousel) .tcard-details-description { display: none; }
+.tcatalog-pagination { margin: 8px 0 12px; }
+.tcatalog-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0; }
+.tcatalog-toolbar .tcatalog-results,.tcatalog-toolbar .tcatalog-pagination { margin: 0; }
+.tcatalog-toolbar .tcatalog-pagination { margin-left: auto; }
+@media (min-width: 1100px) {
+  .tcatalog-tools { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .tcatalog-search { flex: 1; min-width: 230px; }
+  .tcatalog-filters { gap: 6px; }
+  .tcatalog-filters button { font-size: 12px; padding: 9px 10px; }
+}
+@media (max-width: 760px) {
+  .tcatalog-grid.is-carousel .tcard-content { padding-inline: 10px; }
+  .tcatalog-grid.is-carousel .tcard-visual { height: 120px; }
+  .tcatalog-grid.is-carousel .tcard-content h3 { font-size: 17px; }
+}
+@media (max-width: 480px) {
+  .tcatalog-grid:not(.is-carousel) { grid-template-columns: 1fr; }
+  .tcatalog-grid:not(.is-carousel) .tcard-visual { height: 130px; }
+  .tcatalog-grid:not(.is-carousel) .tcard-actions { flex-direction: row; }
+  .tcatalog-grid:not(.is-carousel) .tcard-actions button { flex: 1; }
+}
