@@ -1,4 +1,25 @@
 .landing .price-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.price-summary { margin: 20px 0; border: 1px solid #38304f; border-radius: 14px; padding: 14px; background: #151222; color: #f5f4ff; }
+.price-summary-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.price-summary-items > span { display: flex; flex-direction: column; gap: 5px; font: 400 12px/1.4 Onest, sans-serif; min-width: 0; }
+.price-summary-items strong { font-size: 23px; color: #c4b5fd; white-space: nowrap; }
+.price-summary-items strong small { margin-left: 4px; font-size: 11px; font-weight: 400; }
+.price-summary-items em { font-size: 10px; color: #9ddbc5; font-style: normal; }
+.price-summary-note { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; border-top: 1px solid #38304f; margin-top: 12px; padding-top: 10px; font: 400 11px/1.4 Onest, sans-serif; color: #aaa6c6; }
+.price-summary-note a { color: #c4b5fd; text-underline-offset: 3px; }
+.kira-wordmark { display: grid; gap: 3px; }
+.kira-wordmark small { max-width: 215px; color: #aaa6c6; font: 400 10px/1.35 Onest, sans-serif; letter-spacing: 0; }
+.landing .brand > span:not(.brand-mark) small { white-space: normal; max-width: 180px; text-transform: none; letter-spacing: 0; font: 400 10px/1.35 Onest, sans-serif; }
+@media (max-width: 600px) {
+  .price-summary { padding: 12px 10px; }
+  .price-summary-items { gap: 8px; }
+  .price-summary-items > span { font-size: 10px; }
+  .price-summary-items strong { font-size: 19px; }
+  .price-summary-items strong small { display: block; margin-left: 0; font-size: 10px; }
+  .hub-v2-header .kira-wordmark small { max-width: 112px; font-size: 9px; }
+  .hub-v2-header .hub-v2-brand { min-width: 0; }
+  .landing .landing-nav .brand > span:not(.brand-mark) small { display: block; max-width: 95px; white-space: normal; font-size: 8px; }
+}
 .landing .price-grid > * { min-width: 0; }
 .launch-modal .plan-option small { white-space: normal; }
 .launch-modal > .muted { font-size: 12px; line-height: 1.6; }

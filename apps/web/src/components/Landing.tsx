@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FlowTemplateId } from "../flow-store";
 import { TemplateCatalog } from "./TemplateCatalog";
 import type { PaidBillingPlanCode } from "../pricing";
+import { PriceSummary } from "./PriceSummary";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: PaidBillingPlanCode };
 
@@ -36,7 +37,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
 
   return <div className="landing">
     <header className="landing-nav">
-      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
+      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>Конструктор ботов миниаппов сайтов</small></span></a>
       <nav aria-label="Навигация по странице">
         <a href="#pieces">Что входит</a>
         <a href="#kinds">Что можно собрать</a>
@@ -60,6 +61,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
             <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
             <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
           </div>
+          <PriceSummary href="#pricing" />
           <ul className="hero-chips">
             <li><Check size={14} /> Без кода</li>
             <li><Check size={14} /> Без карты на старте</li>
@@ -135,7 +137,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
     </main>
 
     <footer>
-      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>боты · Mini App · сайты</small></span></a>
+      <a className="brand" href="#top"><span className="brand-mark"><Bot size={19} /></span><span>KIRA<small>Конструктор ботов миниаппов сайтов</small></span></a>
       <div className="footer-links">
         <a href="#pieces">Что входит</a><a href="#kinds">Что можно собрать</a><a href="#pricing">Тарифы</a>
         <button onClick={onService}>Бот под ключ</button>

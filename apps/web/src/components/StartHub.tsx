@@ -3,6 +3,7 @@ import type { FlowTemplateId } from "../flow-store";
 import type { ProductKit } from "../types";
 import { TemplateCatalog } from "./TemplateCatalog";
 import { ConstructorArtwork } from "./ProductArtwork";
+import { PriceSummary } from "./PriceSummary";
 import "../start-hub.css";
 
 type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string };
@@ -35,7 +36,7 @@ type StartHubProps = {
 export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, pending = false, userName }: StartHubProps) {
   return <main className="hub-v2">
     <header className="hub-v2-header">
-      <span className="hub-v2-brand"><span><Bot size={21} /></span>KIRA</span>
+      <span className="hub-v2-brand"><span><Bot size={21} /></span><b className="kira-wordmark">KIRA<small>Конструктор ботов миниаппов сайтов</small></b></span>
       <nav aria-label="Навигация по стартовому экрану">
         <a href="#hub-pricing">Тарифы</a>
         <button type="button" onClick={onSkip} disabled={pending}>В кабинет <ArrowRight size={16} /></button>
@@ -48,6 +49,7 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
           <h1 id="hub-guide-title">{userName ? `Привет, ${userName}!` : "Добро пожаловать в KIRA"}</h1>
           <p>Начните с конструктора или готового сценария. Собрать и проверить можно бесплатно.</p>
         </div>
+        <PriceSummary href="#hub-pricing" />
         <ol className="hub-v2-steps">
           <li><span>01</span><div><h2>Выберите основу</h2><p>Текстовый бот, Mini App или сайт. Либо готовый сценарий ниже.</p></div></li>
           <li><span>02</span><div><h2>Соберите и проверьте</h2><p>Меняйте тексты и блоки, проверяйте результат в предпросмотре. Без Premium.</p></div></li>

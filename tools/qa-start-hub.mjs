@@ -68,6 +68,60 @@ async function originalUnchanged(page) {
   assert.deepEqual(writes, [], "A free preview must not create, update or delete API data");
 }
 
+async function carouselCheck(page) {
+  const pageSize = 3;
+  const titles = page.locator('.tcard h3');
+  const centralTitle = () => titles.nth(1).innerText();
+  assert.equal(await titles.count(), pageSize, 'The default catalogue is a compact carousel');
+  const first = await centralTitle();
+  await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
+  const all = await titles.allTextContents();
+  assert.equal(all.length, 18);
+  await page.getByRole('button', { name: 'Вернуть ленту', exact: true }).click();
+  assert.equal(await titles.count(), pageSize);
+  const previous = page.getByRole('button', { name: 'Предыдущие решения', exact: true });
+  const next = page.getByRole('button', { name: 'Следующие решения', exact: true });
+  await previous.click();
+  assert.equal(await centralTitle(), all.at(-1), 'Previous wraps from first to last');
+  await next.click();
+  assert.equal(await centralTitle(), first, 'Next wraps from last to first');
+  const visited = new Set();
+  for (let index = 0; index < all.length; index += 1) {
+    visited.add(await centralTitle());
+    await next.click();
+  }
+  assert.equal(visited.size, 18, 'Every solution is reachable around the loop');
+  assert.equal(await centralTitle(), first);
+  assert.equal(await page.locator('.tcard.is-focused h3').innerText(), first, 'Central card is initially sharp');
+  if (page.viewportSize().width > 760) {
+    const neighbour = page.locator('.tcard').first();
+    await neighbour.hover();
+    assert.equal(await neighbour.evaluate(node => node.classList.contains('is-focused')), true, 'Hover reveals a neighbour');
+    assert.equal(await page.locator('.tcard').nth(1).evaluate(node => node.classList.contains('is-focused')), false, 'Previous selection becomes blurred');
+    await page.locator('.tcatalog-results').hover();
+    assert.equal(await page.locator('.tcard.is-focused h3').innerText(), first, 'Leaving restores the central highlight');
+    await neighbour.locator('.tcard-look').focus();
+    assert.equal(await neighbour.evaluate(node => node.classList.contains('is-focused')), true, 'Keyboard focus also reveals a neighbour');
+    await next.focus();
+  }
+  if (page.viewportSize().width <= 760) {
+    // Exercise the touch handlers separately from the buttons; vertical gestures must not advance.
+    const grid = page.locator('.tcatalog-grid');
+    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 250, clientY: 200 }] });
+    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 100, clientY: 205 }] });
+    assert.equal(await centralTitle(), all[1], 'Left swipe advances');
+    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 100, clientY: 200 }] });
+    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 250, clientY: 205 }] });
+    assert.equal(await centralTitle(), first, 'Right swipe goes back');
+    await grid.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 100, clientY: 200 }] });
+    await grid.dispatchEvent('touchend', { changedTouches: [{ identifier: 1, clientX: 110, clientY: 400 }] });
+    assert.equal(await centralTitle(), first, 'Vertical scroll does not change cards');
+  }
+  assert.equal(await page.title(), 'KIRA - Конструктор ботов миниаппов сайтов');
+  assert.equal(await page.locator('.price-summary').count(), 1);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+}
+
 async function catalogCheck(page) {
   const search = page.getByRole("searchbox", { name: "Поиск готовых сценариев" });
   await search.fill("отзывы");
@@ -76,6 +130,7 @@ async function catalogCheck(page) {
   await search.fill("no-such-scenario-qa");
   await page.getByRole("heading", { name: "Пока ничего не нашлось" }).waitFor();
   await page.getByRole("button", { name: "Сбросить фильтры" }).click();
+  await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
   assert.equal(await page.locator(".tcard").count(), 18);
   assert.equal(await page.locator(".tcard .solution-art").count(), 18, "Every solution needs an explanatory visual");
   assert.equal(await page.locator(".solution-art").evaluateAll((nodes) => new Set(nodes.map((node) => node.innerHTML)).size), 18, "The artwork must distinguish all 18 solutions");
@@ -87,7 +142,7 @@ async function catalogCheck(page) {
   await page.locator(".tcatalog-filters button").filter({ hasText: "Поддержка" }).click();
   assert.equal(await page.locator(".tcard").count(), 2);
   await page.locator(".tcatalog-filters button").filter({ hasText: "Все решения" }).click();
-  const look = page.locator(".tcard-look").first();
+  const look = page.locator(".tcard.is-focused .tcard-look");
   await look.click();
   const simulator = page.locator(".tcatalog-preview-root .simulator");
   await simulator.waitFor();
@@ -126,6 +181,7 @@ try {
     await page.screenshot({ path: fileURLToPath(new URL(`hub-pricing-${width}.png`, output)), fullPage: false });
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.screenshot({ path: fileURLToPath(new URL(`hub-${width}.png`, output)), fullPage: true });
+    await carouselCheck(page);
     await catalogCheck(page);
     await originalUnchanged(page);
     console.log(`PASS ${width}px: layout ${columns} columns, section order, tariff anchor, no overflow, catalogue search/filter/reset/simulator`);
@@ -165,6 +221,15 @@ try {
       await originalUnchanged(page);
       console.log("PASS template Use opens an isolated editable scenario without an API write");
     }
+    await page.goto(base);
+    await page.locator('.tcard').first().waitFor();
+    await carouselCheck(page);
+    await page.locator('.tcatalog-pagination').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: fileURLToPath(new URL(`landing-carousel-${width}.png`, output)), fullPage: false });
+    await page.getByRole('button', { name: 'Посмотреть все (18)', exact: true }).click();
+    assert.equal(await page.locator('.tcard').count(), 18);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    console.log(`PASS ${width}px: landing and hub cyclic arrows, all 18 reachable, expand/collapse, mobile swipe, brand and prices`);
     await context.close();
   }
   assert.deepEqual(errors, [], "No unhandled browser errors");

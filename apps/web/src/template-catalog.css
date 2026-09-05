@@ -1,4 +1,24 @@
 .tcatalog { color: var(--ink, #f5f4ff); min-width: 0; scroll-margin-top: 90px; }
+.tcatalog-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 14px 0 20px; scroll-margin-top: 100px; }
+.tcatalog-pagination button { display: inline-flex; align-items: center; gap: 12px; min-height: 46px; padding: 12px 24px; color: var(--on-accent); background: #30264e; border: 1px solid #8970df; border-radius: 12px; font: 600 14px Onest, sans-serif; }
+.tcatalog-pagination .tcatalog-arrow { justify-content: center; width: 46px; padding: 10px; flex: none; }
+.tcatalog-position { color: #aaa6c6; font: 400 12px Onest, sans-serif; min-width: 42px; text-align: center; }
+.tcatalog-grid.is-carousel { touch-action: pan-y; }
+.tcatalog-window { min-width: 0; }
+.is-carousel-window { overflow: hidden; padding: 6px 0; }
+.tcatalog-grid.is-carousel .tcard { transition: filter .2s, opacity .2s, transform .2s; transform-origin: center; }
+.tcatalog-grid.is-carousel .tcard:not(.is-focused) { filter: blur(2px); opacity: .5; transform: scale(.95); }
+.tcatalog-grid.is-carousel .tcard.is-focused { filter: none; opacity: 1; transform: none; border-color: var(--card-accent); }
+@media (prefers-reduced-motion: reduce) { .tcatalog-grid.is-carousel .tcard { transition: none; } }
+@media (max-width: 760px) {
+  .tcatalog-pagination { gap: 6px; }
+  .tcatalog-pagination button { padding: 10px 12px; font-size: 12px; }
+  .tcatalog-pagination .tcatalog-arrow { width: 42px; min-height: 44px; }
+  .tcatalog-grid.is-carousel .tcard-visual { height: 150px; }
+  .tcatalog-grid.is-carousel .tcard-tags { margin-top: 0; }
+  .tcatalog-grid.is-carousel.has-neighbors { display: flex; gap: 12px; transform: translateX(calc(-100% + 60px)); }
+  .tcatalog-grid.is-carousel.has-neighbors .tcard { flex: 0 0 calc(100% - 48px); }
+}
 .tcatalog *, .tcatalog-preview-root * { box-sizing: border-box; }
 .tcatalog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 .tcatalog-eyebrow { display: block; color: #53c7f5; font-size: 11px; letter-spacing: .12em; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
