@@ -1,9 +1,10 @@
+import type { BotFlowDocument } from "../../../src/domain/bot-flow";
 import type { BotConnectionStatus, BuilderBlock, Lead, ProjectState } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 const SESSION_KEY = "tma-studio-session";
 interface Session { accessToken: string; refreshToken: string; user: { id: string; displayName: string; email: string } }
-interface RemoteProject { id: string; name: string; status: ProjectState["status"]; publishedReleaseId?: string | null; updatedAt?: string }
+interface RemoteProject { id: string; name: string; slug: string; entryPageId: string | null; status: ProjectState["status"]; publishedReleaseId?: string | null; updatedAt?: string }
 interface RemotePage { id: string; title: string; slug: string; revision: number; updatedAt?: string; document: { blocks: BuilderBlock[] } }
 
 export async function registerAccount(input: { displayName: string; email: string; password: string }): Promise<Session> { const response = await request<{ data: Session }>("/v1/auth/register", { method: "POST", body: JSON.stringify(input) }, false); setSession(response.data); return response.data; }
@@ -40,6 +41,98 @@ export async function createRemoteProject(local: ProjectState): Promise<ProjectS
   });
 }
 
+/**
+ * Promote only an isolated preview into its own draft. Deterministic slugs are
+ * durable recovery markers: a lost POST response never requires a second slot.
+ * Publishing is deliberately separate and still requires the launch wizard.
+ */
+export async function promoteLocalPreview(local: ProjectState, flow: BotFlowDocument): Promise<ProjectState> {
+  const ownerId = getCurrentUser()?.id;
+  if (!ownerId) throw new Error("Войдите в аккаунт для сохранения черновика.");
+  const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  if (local.storageMode !== "local-preview" || !uuid.test(local.id) || !local.pages.length || local.pages.some((page) => !uuid.test(page.id))) {
+    throw new Error("Не удалось определить бесплатный черновик. Откройте его заново.");
+  }
+  const assertAccount = () => {
+    if (getCurrentUser()?.id !== ownerId) throw new Error("Аккаунт изменился. Откройте черновик и повторите сохранение.");
+  };
+  const slug = `draft-${local.id}`;
+  const owned = await listRemoteProjects();
+  const entitlement = await getEntitlement();
+  assertAccount();
+  let target = owned.find((item) => item.slug === slug);
+  if (!target) {
+    if (owned.length >= entitlement.maxProjects) throw new Error("Лимит облачных проектов занят. Бесплатный черновик сохранён на устройстве; для нового облачного проекта нужен подходящий тариф.");
+    try {
+      target = (await request<{ data: RemoteProject }>("/v1/projects", { method: "POST", body: JSON.stringify({ name: local.name, slug }) })).data;
+    } catch (reason) {
+      // The server may have committed before the connection timed out.
+      assertAccount();
+      target = (await listRemoteProjects()).find((item) => item.slug === slug);
+      if (!target) throw reason;
+    }
+  }
+  const projectId = target.id;
+  async function assertUnpublishedTarget(): Promise<RemoteProject> {
+    assertAccount();
+    const current = (await request<{ data: RemoteProject }>(`/v1/projects/${projectId}`)).data;
+    if (current.slug !== slug || current.status !== "draft" || current.publishedReleaseId != null) {
+      throw new Error("Этот черновик уже запущен или изменён в аккаунте. Откройте облачный проект; пробная копия его не заменит.");
+    }
+    return current;
+  }
+  const current = await assertUnpublishedTarget();
+  const remoteFlow = await loadRemoteFlow(projectId);
+  if (remoteFlow.publishedVersion !== undefined) throw new Error("Сценарий уже опубликован. Откройте облачный проект для дальнейших изменений.");
+  const listPages = async () => (await request<{ data: RemotePage[] }>(`/v1/projects/${projectId}/pages`)).data;
+  const remotePages = await listPages();
+  const entry = remotePages.find((page) => page.id === current.entryPageId);
+  if (!entry) throw new Error("Не найдена главная страница облачного черновика. Локальная копия сохранена.");
+  const managedSlug = /^draft-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  if (remotePages.some((page) => page.id !== entry.id && !managedSlug.test(page.slug))) {
+    throw new Error("В облачном проекте появились другие страницы. Откройте его отдельно, чтобы не потерять изменения.");
+  }
+  const mappedIds = new Map<string, string>();
+  const staged: ProjectState["pages"] = [];
+  for (const [index, page] of local.pages.entries()) {
+    const pageSlug = `draft-${page.id}`;
+    let remote = index === 0 ? entry : remotePages.find((item) => item.slug === pageSlug);
+    if (!remote) {
+      await assertUnpublishedTarget();
+      try {
+        // Seed an empty shell first; links are written only after every ID exists.
+        remote = (await request<{ data: RemotePage }>(`/v1/projects/${projectId}/pages`, { method: "POST", body: JSON.stringify({ slug: pageSlug, title: page.title, document: documentFor({ ...page, blocks: [] }) }) })).data;
+      } catch (reason) {
+        assertAccount();
+        remote = (await listPages()).find((item) => item.slug === pageSlug);
+        if (!remote) throw reason;
+      }
+    }
+    mappedIds.set(page.id, remote.id);
+    staged.push({ ...page, id: remote.id, slug: remote.slug, remoteRevision: remote.revision });
+  }
+  const normalized = staged.map((page) => ({ ...page, blocks: remapActions(page.blocks, mappedIds) }));
+  const savedPages: ProjectState["pages"] = [];
+  for (const page of normalized) {
+    await assertUnpublishedTarget();
+    const updated = await updateRemotePage(projectId, page);
+    savedPages.push({ ...page, remoteRevision: updated.revision });
+  }
+  // Only clean up pages created by this promotion, never unrelated pages.
+  const retainedIds = new Set(savedPages.map((page) => page.id));
+  for (const page of remotePages) {
+    if (retainedIds.has(page.id) || page.id === entry.id) continue;
+    await assertUnpublishedTarget();
+    await deleteRemotePage(projectId, page.id);
+  }
+  await assertUnpublishedTarget();
+  await saveRemoteFlow(projectId, flow, remoteFlow.revision);
+  assertAccount();
+  await renameRemoteProject(projectId, local.name);
+  const { storageMode: _previewMode, ...cloud } = local;
+  return { ...cloud, id: projectId, status: "draft", plan: entitlement.planCode, pages: savedPages, activePageId: mappedIds.get(local.activePageId ?? "") ?? savedPages[0]?.id, updatedAt: new Date().toISOString() };
+}
+
 export async function loadRemoteProject(projectId: string, plan: ProjectState["plan"] = "free"): Promise<ProjectState> {
   const [project, pages, bot, entitlement] = await Promise.all([
     request<{ data: RemoteProject }>(`/v1/projects/${projectId}`),
@@ -61,6 +154,7 @@ async function updateRemotePage(projectId: string, page: ProjectState["pages"][n
 }
 
 export async function saveRemoteProject(project: ProjectState): Promise<ProjectState> {
+  if (project.storageMode === "local-preview") return project;
   if (!hasSession()) return project;
   await renameRemoteProject(project.id, project.name);
   const stagedPages = [] as ProjectState["pages"];

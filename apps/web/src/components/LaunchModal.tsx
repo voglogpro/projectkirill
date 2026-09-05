@@ -1,6 +1,6 @@
 import { Bot, Check, ChevronRight, Copy, ExternalLink, Lock, Rocket, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { activateBot, createCheckout, getEntitlement, publishProject, validateBot } from "../api";
+import { activateBot, createCheckout, getEntitlement, loadRemoteFlow, publishProject, publishRemoteFlow, validateBot } from "../api";
 
 type Plan = "solo" | "trio";
 
@@ -62,6 +62,10 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
     setPending(true); setError(undefined);
     try {
       await publishProject(projectId);
+      // A promoted local preview has a saved draft but no published scenario yet.
+      // Publish it before activation so the worker serves the selected template.
+      await loadRemoteFlow(projectId); // Also materializes a draft for legacy page-only projects.
+      await publishRemoteFlow(projectId);
       if (existingBot) { const result = { plan, botUsername: existingBot.username, miniAppUrl: existingBot.miniAppUrl ?? "" }; setLaunchUrl(existingBot.miniAppUrl); onLaunched(result); setStep(4); return; }
       const connected = await activateBot(projectId, token);
       const result = { plan, botUsername: connected.botUsername ?? bot?.username, miniAppUrl: connected.miniAppUrl };

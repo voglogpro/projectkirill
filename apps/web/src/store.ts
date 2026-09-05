@@ -1,4 +1,5 @@
 import type { BuilderBlock, ProjectState, TemplateId } from "./types";
+import { savePreviewProject } from "./local-preview";
 
 const STORAGE_KEY = "tma-studio-project-v2";
 const LEGACY_KEY = "tma-studio-project-v1";
@@ -39,7 +40,10 @@ export function loadProject(): ProjectState {
     return { ...project, status: project.status === "active" ? "active" : "draft", activePageId: project.activePageId ?? project.pages[0]?.id };
   } catch { return createProjectFromTemplate(); }
 }
-export function saveProject(project: ProjectState): void { localStorage.setItem(scopedKey(), JSON.stringify(project)); }
+export function saveProject(project: ProjectState): void {
+  if (project.storageMode === "local-preview") { savePreviewProject(project); return; }
+  localStorage.setItem(scopedKey(), JSON.stringify(project));
+}
 export function clearLocalProject(): void { localStorage.removeItem(scopedKey()); }
 
 // Inline so a new image block renders immediately and never depends on a

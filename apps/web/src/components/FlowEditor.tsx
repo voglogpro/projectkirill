@@ -8,6 +8,7 @@ import { createFlowNode, exitsOf, nodeCatalog, saveFlow, type FlowNodeType } fro
 import { useCompact } from "../use-compact";
 import { canConnect, connectFlow, flowNodeLabel, replaceFlowNode } from "../flow-connections";
 import { createFlowSaveQueue } from "../flow-save-queue";
+import { savePreviewFlow } from "../local-preview";
 import { FlowSimulator } from "./FlowSimulator";
 
 type CanvasData = { node: FlowNode; onChange: (node: FlowNode) => void };
@@ -17,7 +18,9 @@ const icons: Record<FlowNodeType, typeof MessageSquareText> = {
   start: Play, message: MessageSquareText, question: MessageSquareText, choice: GitBranch, delay: Clock, handoff: UserRound,
 };
 
-export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMessage }: { flow: BotFlowDocument; projectId: string; onChange: (flow: BotFlowDocument) => void; onBack: () => void; onLaunch: () => void; onMessage: (message: string) => void }) {
+export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBack, onLaunch, onMessage }: { flow: BotFlowDocument; projectId: string; localOnly?: boolean; onChange: (flow: BotFlowDocument) => void; onBack: () => void; onLaunch: () => void; onMessage: (message: string) => void }) {
+  const cloudEnabled = !localOnly && hasSession();
+  const persistFlow = useCallback((next: BotFlowDocument) => { if (localOnly) savePreviewFlow(projectId, next); else saveFlow(next); }, [localOnly, projectId]);
   const [selectedId, setSelectedId] = useState<string | undefined>(flow.nodes[1]?.id ?? flow.nodes[0]?.id);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const compact = useCompact();
@@ -32,7 +35,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   currentFlow.current = flow;
   const canvas = useRef<ReactFlowInstance<CanvasNode, Edge>>(undefined);
   const remoteSaves = useRef<ReturnType<typeof createFlowSaveQueue>>(undefined);
-  const [loading, setLoading] = useState(hasSession);
+  const [loading, setLoading] = useState(cloudEnabled);
   const [launching, setLaunching] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const skipNextSave = useRef(true);
@@ -43,8 +46,8 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     past.current = [...past.current.slice(-49), currentFlow.current];
     future.current = [];
     currentFlow.current = next;
-    saveFlow(next); onChange(next);
-  }, [onChange]);
+    persistFlow(next); onChange(next);
+  }, [onChange, persistFlow]);
 
   function travel(direction: "undo" | "redo") {
     const source = direction === "undo" ? past : future;
@@ -54,7 +57,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     target.current.push(currentFlow.current);
     currentFlow.current = next;
     setSelectedEdgeId(undefined);
-    saveFlow(next); onChange(next);
+    persistFlow(next); onChange(next);
   }
 
   useEffect(() => {
@@ -74,7 +77,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   // The server owns the scenario; local storage is the offline copy and what
   // the preview stand reads.
   useEffect(() => {
-    if (!hasSession()) { skipNextSave.current = false; return; }
+    if (!cloudEnabled) { skipNextSave.current = false; return; }
     let active = true;
     void loadRemoteFlow(projectId)
       .then((remote) => {
@@ -85,7 +88,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
           (next, revision) => saveRemoteFlow(projectId, next, revision));
         past.current = []; future.current = [];
         skipNextSave.current = true;
-        saveFlow(document);
+        persistFlow(document);
         onChange(document);
         // The previous selection belonged to the local copy and may not exist here.
         setSelectedId(document.nodes[1]?.id ?? document.nodes[0]?.id);
@@ -98,7 +101,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   useEffect(() => {
     if (skipNextSave.current) { skipNextSave.current = false; return; }
     const queue = remoteSaves.current;
-    if (!hasSession() || queue === undefined) return;
+    if (!cloudEnabled || queue === undefined) return;
     let active = true;
     setSaveState("saving");
     const timer = setTimeout(() => {
@@ -112,7 +115,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
   async function launch() {
     setLaunching(true);
     try {
-      if (hasSession()) {
+      if (cloudEnabled) {
         if (!remoteSaves.current) throw new Error("Сначала загрузите облачный сценарий: вернитесь в кабинет и откройте редактор заново.");
         await remoteSaves.current.save(currentFlow.current);
         await publishRemoteFlow(projectId);
@@ -238,7 +241,7 @@ export function FlowEditor({ flow, projectId, onChange, onBack, onLaunch, onMess
     <header className="builder-top">
       <div>
         <button className="icon-button" onClick={() => void back()} aria-label="Вернуться в кабинет"><ArrowLeft /></button>
-        <span className="flow-title"><b>{flow.metadata.name}</b><small className={saveState === "error" ? "error" : ""}>{saveState === "saving" ? "Сохраняем в облаке…" : saveState === "error" ? "Ошибка сохранения" : hasSession() ? "Сохранено в облаке" : "Сохранено на этом устройстве"} · {flow.nodes.length} шагов</small></span>
+        <span className="flow-title"><b>{flow.metadata.name}</b><small className={saveState === "error" ? "error" : ""}>{localOnly ? "Бесплатный черновик · на устройстве" : saveState === "saving" ? "Сохраняем в облаке…" : saveState === "error" ? "Ошибка сохранения" : cloudEnabled ? "Сохранено в облаке" : "Сохранено на этом устройстве"} · {flow.nodes.length} шагов</small></span>
       </div>
       <div />
       <div>

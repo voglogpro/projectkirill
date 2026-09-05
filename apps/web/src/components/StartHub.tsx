@@ -1,155 +1,106 @@
-import { ArrowRight, Bot, Check, ChevronLeft, ChevronRight, Globe, LayoutGrid, MessageSquareText, Rocket, Smartphone } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Bot, Check, Globe, LayoutGrid, MessageSquareText, Smartphone } from "lucide-react";
 import type { FlowTemplateId } from "../flow-store";
 import type { ProductKit } from "../types";
-import { KindRail } from "./KindRail";
+import { TemplateCatalog } from "./TemplateCatalog";
+import "../start-hub.css";
 
-/**
- * The screen behind the door. It reads top-down the way the owner works:
- * what you already started, what you can build now, what is half-ready to
- * take, and only then how any of it is put together.
- */
-type Kit = {
-  id: ProductKit; icon: typeof Bot; title: string; text: string;
-  gain: string; price: string; note: string; parts: string[]; best?: boolean;
-};
+type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string };
 
-const kits: Kit[] = [
-  {
-    id: "bot", icon: MessageSquareText, title: "Текстовый бот",
-    text: "Разговор в Telegram: сообщения, кнопки, вопросы, развилки.",
-    gain: "Отвечает ночью и в выходные, а заявки не теряются в переписке — они складываются в кабинет.",
-    price: "350 ₽", note: "в месяц", parts: ["Бот"],
-  },
-  {
-    id: "bot-app", icon: Smartphone, title: "Бот и Mini App",
-    text: "К разговору добавляются экраны внутри Telegram: каталог, карточки, форма.",
-    gain: "Клиент видит витрину и оформляет заказ, не выходя из чата. Каталог больше не рассылают скриншотами.",
-    price: "650 ₽", note: "в месяц", parts: ["Бот", "Mini App"],
-  },
-  {
-    id: "bot-app-site", icon: LayoutGrid, title: "Бот, Mini App и сайт",
-    text: "Всё вместе: те же экраны ещё и по обычной ссылке.",
-    gain: "Одна витрина работает и в Telegram, и в браузере. Поменяли цену один раз — поменялась везде.",
-    price: "650 ₽", note: "в месяц", parts: ["Бот", "Mini App", "Сайт"], best: true,
-  },
-  {
-    id: "site", icon: Globe, title: "Только сайт",
-    text: "Страница по обычной ссылке без Telegram-бота. Собирается теми же блоками.",
-    gain: "Визитка, которую можно поправить за минуту самому — без верстальщика и без хостинга на стороне.",
-    price: "350 ₽", note: "в месяц", parts: ["Сайт"],
-  },
+const kits: readonly Kit[] = [
+  { id: "bot", icon: MessageSquareText, title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hosting: "Сценарий в Telegram" },
+  { id: "bot-app", icon: Smartphone, title: "Бот и Mini App", description: "Бот и приложение с каталогом, карточками и формами.", hosting: "Бот + приложение" },
+  { id: "bot-app-site", icon: LayoutGrid, title: "Бот, Mini App и сайт", description: "Один проект в Telegram и по ссылке в браузере.", hosting: "Бот + приложение + сайт" },
+  { id: "site", icon: Globe, title: "Только сайт", description: "Страница из блоков с предпросмотром в браузере.", hosting: "Страница проекта" },
 ];
 
-const guides = [
-  {
-    icon: MessageSquareText, title: "Как собирается текстовый бот", accent: "a",
-    steps: ["Берёте готовый сценарий — заявки, запись, магазин, поддержка.", "На холсте правите карточки: карточка — это сообщение, стрелка — переход.", "Добавляете кнопки в сообщение, и от каждой кнопки тянется своя стрелка.", "Жмёте «Проверить в чате», а потом «Запустить» — токен и хостинг берём мы."],
-  },
-  {
-    icon: Smartphone, title: "Как собирается Mini App", accent: "b",
-    steps: ["Экран собирается блоками: заголовок, текст, картинка, кнопка, товар, форма.", "Блоки складываются сверху вниз, порядок меняется стрелками.", "Рядом настраиваются свойства выбранного блока — текст, цвет кнопки, поля формы.", "После публикации бот открывает Mini App кнопкой меню."],
-  },
-  {
-    icon: Globe, title: "Как собирается сайт", accent: "c",
-    steps: ["Сайт — те же страницы и те же блоки, что и Mini App.", "Отдельно верстать ничего не нужно: контент один.", "Ссылка вида /s/ваш-проект открывается в любом браузере.", "Поменяли текст в кабинете и опубликовали — обновилось и в Telegram, и на сайте."],
-  },
-];
-
-export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip }: {
+type StartHubProps = {
   projects: Array<{ id: string; name: string }>;
   onPick: (kit: ProductKit) => void;
   onTemplate: (template: FlowTemplateId) => void;
   onOpenProject: (id: string) => void;
   onSkip: () => void;
-}) {
-  return <main className="hub">
-    <header>
-      <span className="brand bare"><span className="brand-mark"><Bot /></span>KIRA</span>
-      <button className="back-link" onClick={onSkip}>В кабинет <ArrowRight /></button>
-    </header>
+  pending?: boolean;
+  userName?: string;
+};
 
-    <section>
-      {projects.length > 0 && <div className="hub-block hub-projects">
-        <div className="hub-caption"><span>ВАШИ ПРОЕКТЫ</span><h2>Продолжить начатое</h2></div>
-        <div className="project-cards">
-          {projects.map((project) => <button key={project.id} onClick={() => onOpenProject(project.id)}>
-            <span className="project-mark">{project.name.slice(0, 1).toUpperCase()}</span>
-            <b>{project.name}</b>
-            <span className="project-go">Открыть <ArrowRight size={15} /></span>
+/** Build first, pay at launch. Editor choices are not separate subscriptions. */
+export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, pending = false, userName }: StartHubProps) {
+  return <main className="hub-v2">
+    <header className="hub-v2-header">
+      <span className="hub-v2-brand"><span><Bot size={21} /></span>KIRA</span>
+      <nav aria-label="Навигация по стартовому экрану">
+        <a href="#hub-pricing">Тарифы</a>
+        <button type="button" onClick={onSkip} disabled={pending}>В кабинет <ArrowRight size={16} /></button>
+      </nav>
+    </header>
+    <div className="hub-v2-content">
+      <section className="hub-v2-guide" aria-labelledby="hub-guide-title">
+        <div className="hub-v2-heading">
+          <span className="hub-v2-eyebrow">ВАШ ПУТЬ К ЗАПУСКУ</span>
+          <h1 id="hub-guide-title">{userName ? `Привет, ${userName}!` : "Добро пожаловать в KIRA"}</h1>
+          <p>Начните с конструктора или готового сценария. Собрать и проверить можно бесплатно.</p>
+        </div>
+        <ol className="hub-v2-steps">
+          <li><span>01</span><div><h2>Выберите основу</h2><p>Текстовый бот, Mini App или сайт. Либо готовый сценарий ниже.</p></div></li>
+          <li><span>02</span><div><h2>Соберите и проверьте</h2><p>Меняйте тексты и блоки, проверяйте результат в предпросмотре. Без Premium.</p></div></li>
+          <li><span>03</span><div><h2>Запустите для клиентов</h2><p>Добавьте токен из <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">@BotFather</a>. Тариф понадобится при публикации.</p></div></li>
+        </ol>
+      </section>
+
+      {projects.length > 0 && <section className="hub-v2-section" aria-labelledby="hub-projects-title">
+        <div className="hub-v2-section-title"><h2 id="hub-projects-title">Продолжить работу</h2><span>Проектов: {projects.length}</span></div>
+        <div className="hub-v2-projects">
+          {projects.map((project) => <button type="button" key={project.id} onClick={() => onOpenProject(project.id)} disabled={pending}>
+            <span className="hub-v2-project-icon">{project.name.slice(0, 1).toUpperCase()}</span>
+            <span className="hub-v2-project-name"><strong>{project.name}</strong><small>Открыть проект</small></span>
+            <ArrowRight size={18} />
           </button>)}
         </div>
-      </div>}
+      </section>}
 
-      <div className="hub-block">
-        <div className="hub-caption"><span>С ЧЕГО НАЧНЁМ</span><h2>Что собираем?</h2><p>Листайте вбок. Остальное добавляется потом в том же кабинете — переносить ничего не придётся.</p></div>
-        <KitRail onPick={onPick} />
-        <p className="hub-free"><Check size={15} />Собрать и проверить — бесплатно и без карты. Платят, только когда продукт идёт к клиентам.</p>
-      </div>
+      <section className="hub-v2-section" id="hub-constructors" aria-labelledby="hub-constructors-title">
+        <div className="hub-v2-heading">
+          <span className="hub-v2-eyebrow">КОНСТРУКТОРЫ</span>
+          <h2 id="hub-constructors-title">Какой конструктор вы можете выбрать</h2>
+          <p>Все четыре доступны бесплатно. Пробуйте — существующий проект не изменится.</p>
+        </div>
+        <div className="hub-v2-kit-grid">
+          {kits.map(({ id, icon: Icon, title, description }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
+            <span className="hub-v2-kit-top"><Icon size={25} /><span>Бесплатно</span></span>
+            <h3>{title}</h3><p>{description}</p>
+            <span className="hub-v2-kit-cta">Открыть <ArrowRight size={17} /></span>
+          </button>)}
+        </div>
+        <p className="hub-v2-free"><Check size={16} />Карта и Premium не нужны. Оплата — только за запуск и хостинг.</p>
+        {pending && <p className="hub-v2-status" role="status">Открываем конструктор…</p>}
+      </section>
 
-      <div className="hub-block">
-        <div className="hub-caption"><span>ПОЛУГОТОВОЕ</span><h2>Возьмите сценарий и доработайте</h2><p>Каждый уже собран целиком — останется поменять слова под своё дело.</p></div>
-        <div className="hub-rail"><KindRail onPick={onTemplate} /></div>
-      </div>
+      <section className="hub-v2-section" id="hub-templates" aria-labelledby="hub-templates-title">
+        <div className="hub-v2-heading">
+          <span className="hub-v2-eyebrow">ГОТОВЫЕ СЦЕНАРИИ</span>
+          <h2 id="hub-templates-title">Выберите задачу для своего бота</h2>
+          <p>Посмотрите сценарий, возьмите за основу и адаптируйте под своё дело.</p>
+        </div>
+        <TemplateCatalog onPick={onTemplate} pending={pending} showHeading={false} />
+      </section>
 
-      <div className="hub-block">
-        <div className="hub-caption"><span>ИНСТРУКЦИЯ</span><h2>Как это собирается</h2><p>Три части продукта, и у каждой свой короткий путь от пустого экрана до запуска.</p></div>
-        <div className="guide-grid">
-          {guides.map(({ icon: Icon, title, steps, accent }) => <article key={title} className={`guide-card accent-${accent}`}>
-            <span className="guide-icon"><Icon /></span>
-            <b>{title}</b>
-            <ol>{steps.map((step, index) => <li key={step}><i>{index + 1}</i><span>{step}</span></li>)}</ol>
+      <section className="hub-v2-section hub-v2-pricing" id="hub-pricing" aria-labelledby="hub-pricing-title">
+        <div className="hub-v2-heading">
+          <span className="hub-v2-eyebrow">ОПЛАТА ПРИ ПУБЛИКАЦИИ</span>
+          <h2 id="hub-pricing-title">Тарифы на запуск</h2>
+          <p>350 ₽/мес — один бот, 650 ₽/мес — до трёх. Редакторы и предпросмотр бесплатны.</p>
+        </div>
+        <div className="hub-v2-price-grid">
+          {kits.map(({ id, icon: Icon, title, hosting }) => <article className="hub-v2-price" key={id}>
+            <Icon size={22} /><h3>{title}</h3>
+            <p className="hub-v2-price-value"><small>от </small>350 ₽<span>/ месяц</span></p>
+            <p className="hub-v2-price-detail">{hosting}<br />Хостинг включён</p>
+            <button type="button" onClick={() => onPick(id)} disabled={pending}>Собрать бесплатно</button>
           </article>)}
         </div>
-        <p className="hub-foot"><Rocket size={16} /> Всё это — один проект в одном кабинете. Не понравился выбор — поменяете, ничего не потеряв. Эта страница всегда открывается из раздела «Помощь».</p>
-      </div>
-    </section>
+        <p className="hub-v2-pricing-note">Это варианты одного проекта, а не отдельные подписки. Для публикации сайта сейчас также нужно подключить Telegram-бота. Кнопки открывают бесплатный конструктор — деньги не списываются.</p>
+      </section>
+      <footer className="hub-v2-footer">KIRA · От идеи до работающего проекта</footer>
+    </div>
   </main>;
-}
-
-/** The kits ride the same swipeable rail as the deck of tasks on the cover. */
-function KitRail({ onPick }: { onPick: (kit: ProductKit) => void }) {
-  const rail = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
-
-  const metrics = () => {
-    const element = rail.current;
-    const card = element?.firstElementChild as HTMLElement | null;
-    if (element == null || card == null || card.offsetWidth === 0) return null;
-    return { element, step: card.offsetWidth + 16 };
-  };
-
-  const sync = () => {
-    const found = metrics();
-    if (found === null) return;
-    setActive(Math.min(kits.length - 1, Math.max(0, Math.round(found.element.scrollLeft / found.step))));
-  };
-  useEffect(sync, []);
-
-  const jumpTo = (index: number) => {
-    const found = metrics();
-    if (found === null) return;
-    found.element.scrollTo({ left: index * found.step, behavior: "smooth" });
-  };
-
-  return <div className="kit-rail-wrap">
-    <div className="kit-rail" ref={rail} onScroll={sync} tabIndex={0} role="group" aria-label="Что собираем">
-      {kits.map(({ id, icon: Icon, title, text, gain, price, note, parts, best }) => (
-        <button key={id} className={`kit-card kit-${id} ${best ? "best" : ""}`} onClick={() => onPick(id)}>
-          {best && <span className="kit-flag">ЧАЩЕ ВСЕГО БЕРУТ</span>}
-          <span className="kit-icon"><Icon /></span>
-          <b>{title}</b>
-          <p>{text}</p>
-          <span className="kit-gain"><em>ЧТО ЭТО ДАЁТ</em>{gain}</span>
-          <span className="kit-parts">{parts.map((part) => <em key={part}>{part}</em>)}</span>
-          <span className="kit-foot"><i>{price}<small>{note}</small></i><span className="kit-go">Собрать <ArrowRight size={15} /></span></span>
-        </button>
-      ))}
-    </div>
-    <div className="kind-nav">
-      <button className="rail-arrow" onClick={() => jumpTo(Math.max(0, active - 1))} aria-label="Предыдущий набор"><ChevronLeft size={18} /></button>
-      <div className="rail-dots">{kits.map((kit, index) => <button key={kit.id} className={index === active ? "on" : ""} onClick={() => jumpTo(index)} aria-label={kit.title} />)}</div>
-      <button className="rail-arrow" onClick={() => jumpTo(Math.min(kits.length - 1, active + 1))} aria-label="Следующий набор"><ChevronRight size={18} /></button>
-    </div>
-  </div>;
 }

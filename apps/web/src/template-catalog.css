@@ -1,0 +1,88 @@
+.tcatalog { color: var(--ink, #f5f4ff); min-width: 0; scroll-margin-top: 90px; }
+.tcatalog *, .tcatalog-preview-root * { box-sizing: border-box; }
+.tcatalog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.tcatalog-eyebrow { display: block; color: #53c7f5; font-size: 11px; letter-spacing: .12em; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+.tcatalog-heading h2 { font-family: Unbounded, Onest, sans-serif; font-size: clamp(20px, 2.4vw, 31px); line-height: 1.3; letter-spacing: -.04em; margin: 0 0 12px; }
+.tcatalog-heading p { color: #aaa7c7; font-size: 14px; line-height: 1.6; max-width: 700px; margin: 0; }
+.tcatalog-free { display: inline-flex; align-items: center; gap: 5px; color: #81d9bb; background: #16302d; padding: 7px 10px; border-radius: 8px; white-space: nowrap; font-size: 12px; }
+.tcatalog-tools { display: flex; flex-direction: column; gap: 14px; }
+.tcatalog-search { display: flex; align-items: center; gap: 10px; background: #151522; border: 1px solid #333146; border-radius: 12px; color: #aaa7c7; padding: 0 12px; max-width: 490px; min-height: 46px; }
+.tcatalog-search:focus-within { outline: 2px solid #a491ff; outline-offset: 2px; }
+.tcatalog-search input { flex: 1; min-width: 0; width: 100%; border: 0; box-shadow: none; outline: none; background: transparent; color: #f5f4ff; padding: 11px 0; font: inherit; font-size: 14px; }
+.tcatalog-search input::-webkit-search-cancel-button { display: none; }
+.tcatalog-search input::placeholder { color: #aaa7c7; }
+.tcatalog-search button { display: grid; place-items: center; border: 0; background: transparent; color: #ccc9e0; min-height: 40px; min-width: 34px; padding: 5px; }
+.tcatalog-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.tcatalog-filters button { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 9px 12px; border: 1px solid #333146; border-radius: 10px; background: #12121f; color: #c3c0d8; font: inherit; font-size: 13px; }
+.tcatalog-filters button[aria-pressed="true"] { color: var(--on-accent); background: #30264e; border-color: #8970df; }
+.tcatalog-filters button span { font-size: 11px; opacity: .8; }
+.tcatalog-results { color: #aaa7c7; font-size: 12px; margin: 15px 0 12px; }
+.tcatalog-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.tcard { min-width: 0; display: flex; flex-direction: column; border-radius: 17px; overflow: hidden; border: 1px solid #302d43; background: #12121f; transition: border-color .18s, box-shadow .18s; }
+.tcard:hover { border-color: #74629e; box-shadow: 0 9px 30px #0003; }
+.tcard-preview-button { position: relative; display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; overflow: hidden; }
+.tcard-visual { --card-accent: #b099ff; padding: 22px 18px 32px; height: 218px; background: radial-gradient(ellipse at 50% 10%, #6553ac66, transparent 80%), #1b182e; overflow: hidden; }
+.tcard-visual--cyan { --card-accent: #67cefa; background: radial-gradient(ellipse at 50% 10%, #31759466, transparent 80%), #112532; }
+.tcard-visual--mint { --card-accent: #78dec2; background: radial-gradient(ellipse at 50% 10%, #28785f66, transparent 80%), #152b2d; }
+.tcard-visual--amber { --card-accent: #f3ca7d; background: radial-gradient(ellipse at 50% 10%, #98754455, transparent 80%), #292335; }
+.tcard-chat { max-width: 245px; margin: 0 auto; background: #121421; border: 1px solid #ffffff20; border-radius: 12px; padding: 10px; box-shadow: 0 12px 28px #0004; }
+.tcard-chat-head { display: flex; align-items: center; gap: 6px; font-size: 10px; padding-bottom: 9px; }
+.tcard-chat-head > span { display: grid; place-items: center; height: 22px; width: 22px; border-radius: 7px; background: #ffffff10; color: var(--card-accent); }
+.tcard-chat-head i { width: 5px; height: 5px; border-radius: 50%; background: #77e2bf; margin-left: auto; }
+.tcard-bubble { padding: 8px; border-radius: 8px 8px 8px 2px; background: #ffffff0c; color: #e5e1f5; font-size: 10px; line-height: 1.5; }
+.tcard-chat-buttons { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
+.tcard-chat-buttons span { border-radius: 5px; padding: 5px 3px; color: var(--card-accent); background: #ffffff09; text-align: center; font-size: 9px; }
+.tcard-chat-reply { display: flex; align-items: center; gap: 3px; font-size: 8px; color: #a6a4bc; margin-top: 9px; }
+.tcard-preview-hint { position: absolute; display: inline-flex; align-items: center; gap: 5px; bottom: 10px; left: 12px; padding: 5px 8px; background: #111321ed; color: #e2dafd; border: 1px solid #ffffff1a; border-radius: 7px; font-size: 10px; }
+.tcard-content { display: flex; flex: 1; flex-direction: column; padding: 16px; min-width: 0; }
+.tcard-format { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #aaa7c7; }
+.tcard-content h3 { font-family: Onest, sans-serif; font-size: 19px; line-height: 1.25; letter-spacing: -.025em; margin: 10px 0 8px; overflow-wrap: anywhere; }
+.tcard-content > p { font-size: 12px; line-height: 1.55; color: #b2afca; margin: 0 0 13px; }
+.tcard-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-bottom: 16px; }
+.tcard-tags span { color: #c7c2df; background: #211e35; font-size: 10px; padding: 4px 6px; border-radius: 5px; }
+.tcard-actions { display: flex; flex-direction: column; gap: 7px; }
+.tcard-actions button { display: flex; justify-content: center; align-items: center; gap: 5px; min-height: 42px; border-radius: 9px; padding: 9px 6px; font: inherit; font-size: 12px; font-weight: 600; }
+.tcard-look { color: #e5defb; background: transparent; border: 1px solid #423959; }
+.tcard-use { color: var(--on-accent); background: linear-gradient(120deg, #7653e5, #247dae); border: 1px solid transparent; }
+.tcard-use:disabled { opacity: .5; cursor: wait; }
+.tcatalog button { cursor: pointer; }
+.tcatalog button:focus-visible { outline: 2px solid #c0b0ff; outline-offset: -3px; }
+.tcatalog-note { color: #aaa7c7; font-size: 12px; line-height: 1.6; margin: 20px 0 0; max-width: 800px; }
+.tcatalog-empty { text-align: center; padding: 40px 20px; border: 1px dashed #423959; border-radius: 16px; color: #aaa7c7; }
+.tcatalog-empty h3 { color: #f5f4ff; font-size: 19px; }
+.tcatalog-empty p { font-size: 14px; }
+.tcatalog-empty button { background: #30264e; color: var(--on-accent); border: 1px solid #8970df; border-radius: 9px; min-height: 44px; padding: 10px 18px; font: inherit; }
+.tcatalog-preview-root .modal-backdrop { z-index: 250; background: #070711cc; }
+.tcatalog-preview-root .simulator { width: min(460px, 100%); height: min(690px, 88dvh); color: #f5f4ff; border: 1px solid #333146; }
+.tcatalog-preview-root .simulator-log { background: #0d0d18; }
+.tcatalog-preview-root .simulator header b { font-size: 14px; }
+.tcatalog-preview-root .simulator header small { font-size: 10px; }
+.tcatalog-preview-root .simulator header button { width: 44px; height: 44px; }
+.tcatalog-preview-root .sim-bubble { font-size: 14px; }
+.tcatalog-preview-root .sim-line.system .sim-bubble { font-size: 12px; }
+.tcatalog-preview-root .sim-button { min-height: 44px; font-size: 13px; color: #e7dcff; background: #332752; }
+.tcatalog-preview-root .simulator-input input { min-height: 44px; font-size: 16px; }
+.tcatalog-preview-root .simulator-input button { width: 44px; height: 44px; }
+@media (max-width: 1050px) { .tcatalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .landing .kinds > .tcatalog { margin-inline: 16px; }
+  .tcatalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tcatalog-heading { flex-direction: column; gap: 12px; }
+  .tcatalog-heading p { font-size: 13px; }
+  .tcatalog-search { max-width: none; }
+  .tcatalog-filters { gap: 6px; }
+  .tcatalog-filters button { font-size: 11px; padding: 8px; gap: 5px; }
+  .tcard-visual { height: 190px; padding: 14px 9px 30px; }
+  .tcard-content { padding: 12px 10px; }
+  .tcard-content h3 { font-size: 16px; }
+  .tcard-content > p { font-size: 12px; }
+  .tcard-chat { padding: 7px; }
+  .tcard-chat-reply { display: none; }
+  .tcard-bubble { font-size: 9px; padding: 7px; }
+  .tcard-preview-hint { left: 6px; bottom: 8px; font-size: 9px; gap: 2px; padding: 4px; }
+  .tcard-format { font-size: 10px; }
+  .tcard-tags { gap: 4px; padding-bottom: 12px; }
+  .tcard-tags span { font-size: 9px; }
+  .tcard-actions button { min-height: 44px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .tcard { transition: none; } }

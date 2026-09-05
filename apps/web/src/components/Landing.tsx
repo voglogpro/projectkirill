@@ -1,7 +1,7 @@
 import { ArrowRight, Bot, Check, Globe, MessageSquareText, Rocket, Smartphone, Sparkles, Wrench } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FlowTemplateId } from "../flow-store";
-import { KindRail } from "./KindRail";
+import { TemplateCatalog } from "./TemplateCatalog";
 
 type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
 
@@ -11,14 +11,14 @@ type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; p
  */
 const pieces = [
   { icon: MessageSquareText, tag: "ОСНОВА", title: "Текстовый бот", text: "Разговор в Telegram: сообщения, кнопки, вопросы, развилки. С него начинают все — этого одного уже хватает, чтобы принимать заявки.", note: "Входит в оба тарифа" },
-  { icon: Smartphone, tag: "ЭКРАНЫ", title: "Mini App", text: "Приложение внутри Telegram: каталог, карточки, форма, оплата. Бот открывает его кнопкой — выходить из мессенджера не нужно.", note: "Собирается блоками, как страница" },
+  { icon: Smartphone, tag: "ЭКРАНЫ", title: "Mini App", text: "Приложение внутри Telegram: каталог, карточки и формы заявок. Бот открывает его кнопкой — выходить из мессенджера не нужно.", note: "Собирается блоками, как страница" },
   { icon: Globe, tag: "ССЫЛКА", title: "Сайт", text: "Те же экраны по обычной ссылке — для тех, кто не в Telegram. Отдельно верстать ничего не надо: контент один и тот же.", note: "Готов сразу после публикации" },
 ];
 
 const steps = [
   { title: "Собираете разговор", text: "Карточка-сообщение, кнопки, вопрос, развилка. Мышкой, без кода." },
   { title: "Проверяете в чате", text: "Тот же движок, что в Telegram: жмёте кнопки как клиент." },
-  { title: "Нажимаете «Запустить»", text: "Бота, токен, меню и хостинг берём на себя." },
+  { title: "Нажимаете «Запустить»", text: "Подключаете токен из @BotFather, выбираете хостинг — мы настраиваем меню бота." },
 ];
 
 export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent) => void; onService: () => void }) {
@@ -54,7 +54,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
         <div className="hero-copy">
           <div className="eyebrow"><Sparkles size={15} /> БОТ · MINI APP · САЙТ В ОДНОМ КАБИНЕТЕ</div>
           <h1>Соберите бота,<br /><em>который нужен вам</em></h1>
-          <p>Заявки, запись, магазин, обучение, поддержка. Разговор собираете мышкой, а бота, токен и хостинг берём мы. Рядом — Mini App и сайт на том же контенте.</p>
+          <p>Заявки, запись, магазин, обучение, поддержка. Соберите разговор из блоков, проверьте и подключите своего бота. Рядом — Mini App и сайт на том же контенте. Хостинг внутри платформы.</p>
           <div className="hero-actions">
             <button className="primary-button large" onClick={() => onStart()}>Создать бота бесплатно <ArrowRight size={17} /></button>
             <button className="text-link" onClick={() => onStart({ templateId: "leads" })}>или начать с готового сценария</button>
@@ -84,8 +84,8 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       </section>
 
       <section className="kinds" id="kinds">
-        <div className="section-heading"><span>ЧТО МОЖНО СОБРАТЬ</span><h2>Бот под вашу задачу, а не «универсальный»</h2><p>Листайте вбок — под каждой задачей уже лежит сценарий.</p></div>
-        <KindRail onPick={(template) => onStart({ templateId: template })} />
+        <div className="section-heading"><span>ГОТОВЫЕ СЦЕНАРИИ</span><h2>Выберите задачу для своего бота</h2><p>Посмотрите, как отвечает бот, и возьмите сценарий за основу бесплатно.</p></div>
+        <TemplateCatalog showHeading={false} onPick={(template) => onStart({ templateId: template })} />
       </section>
 
       <section className="how" id="how">
@@ -99,9 +99,9 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
       <section className="pricing" id="pricing">
         <div className="section-heading"><span>ТАРИФЫ</span><h2>Платите за то, что собрали</h2><p>Не за подписчиков: один сервер обслуживает всех, поэтому цена не растёт вместе с вами.</p></div>
         <div className="price-grid">
-          <Price name="Черновик" price="0 ₽" description="Собрать и проверить" items={["Холст сценария целиком", "Проверка бота в чате", "Один проект", "Без банковской карты"]} action="Собрать бесплатно" onClick={() => onStart()} />
-          <Price featured name="Один продукт" price="350 ₽" suffix="/ месяц" description="Бот в Telegram" items={["Работающий Telegram-бот", "Без лимита на подписчиков", "Заявки в кабинете", "Хостинг и HTTPS"]} action="Запустить бота" onClick={() => onStart({ plan: "solo" })} />
-          <Price name="До трёх продуктов" price="650 ₽" suffix="/ месяц" description="Бот, Mini App и сайт" items={["Всё из тарифа слева", "Mini App внутри Telegram", "Сайт на том же контенте", "Один кабинет на всё"]} action="Запустить всё" onClick={() => onStart({ plan: "trio" })} />
+          <Price name="Черновик" price="0 ₽" description="Собрать и проверить" items={["Все четыре конструктора", "Проверка бота и страниц", "Один облачный проект", "Пробные копии на устройстве"]} action="Собрать бесплатно" onClick={() => onStart()} />
+          <Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Запуск одного проекта" items={["Работающий Telegram-бот", "Mini App и страница проекта", "Заявки в кабинете", "Хостинг и HTTPS"]} action="Запустить бота" onClick={() => onStart({ plan: "solo" })} />
+          <Price name="До трёх ботов" price="650 ₽" suffix="/ месяц" description="Несколько проектов" items={["Всё из тарифа слева", "До трёх Telegram-ботов", "Mini App для каждого", "Один кабинет на всё"]} action="Выбрать тариф" onClick={() => onStart({ plan: "trio" })} />
         </div>
       </section>
 
@@ -119,7 +119,7 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
         <div className="faq-list">
           <Faq title="Нужно ли уметь программировать?">Нет. Диалог собирается мышкой: карточка-сообщение, кнопки, вопрос, развилка. Код видеть не придётся ни разу.</Faq>
           <Faq title="Откуда возьмётся сам бот в Telegram?">Из вашего аккаунта. Мы показываем, как получить бота, забираем токен, шифруем его и подключаем — от вас одно нажатие.</Faq>
-          <Faq title="Что можно сделать бесплатно?">Зарегистрироваться, собрать весь сценарий и проверить его в чате. Платить нужно только чтобы бот заработал у настоящих клиентов.</Faq>
+          <Faq title="Что можно сделать бесплатно?">Собрать и проверить бота, Mini App или сайт. Пробные копии сохраняются в браузере на этом устройстве, отдельно от облачных проектов. Платить нужно за публикацию и хостинг.</Faq>
           <Faq title="Что будет, если клиентов станет много?">Ничего. Тариф считает продукты, а не подписчиков: хоть сто человек в день, хоть десять тысяч — цена та же.</Faq>
           <Faq title="Можно поменять сценарий после запуска?">Да, в любой момент. Правите текст на холсте, нажимаете «Опубликовать» — бот отвечает по-новому со следующего сообщения.</Faq>
           <Faq title="А если я не хочу возиться сам?">Соберём за вас: от 4 900 ₽ разово. Подробности — <button className="link-button" onClick={onService}>на странице «Бот под ключ»</button>.</Faq>

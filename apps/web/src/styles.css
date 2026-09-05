@@ -1726,6 +1726,27 @@ button { color: inherit; }
 .flow-links h3 { margin: 0; font-size: 14px; }
 .flow-links select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 .flow-screen [hidden] { display: none !important; }
+.local-preview-nav { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 4px 12px; background: var(--paper); border-bottom: 1px solid var(--line); color: var(--muted); font: 12px Onest, sans-serif; }
+.local-preview-nav button { min-height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 12px; background: var(--surface-2); color: var(--ink); }
+.local-preview-nav button[aria-pressed=true] { background: var(--brand-100); color: var(--brand-800); border-color: var(--brand-200); }
+.local-preview-nav + .flow-screen,.local-preview-nav + .builder { height: calc(100dvh - 44px); }
+.draft-save-dialog { width: min(540px,100%); max-height: 90dvh; overflow-y: auto; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: var(--paper); color: var(--ink); font-family: Onest, sans-serif; }
+.draft-save-dialog h2 { margin: 0 0 18px; font-size: 25px; }
+.draft-save-dialog p { font-size: 15px; line-height: 1.6; color: var(--muted); }
+.draft-save-dialog button { width: 100%; margin-top: 12px; min-height: 44px; }
+.phone-shell.site-preview-shell { width: min(100%, 760px); max-width: 100%; border: 1px solid var(--line); border-radius: 16px; min-height: 480px; }
+.site-preview-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px; border-bottom: 1px solid var(--line); }
+.site-preview-header small { opacity: .65; }
+.site-preview-shell .phone-content { padding: 22px; }
+.preview-modal.preview-modal-site { width: min(900px,100%); }
+.preview-mode-switch { display: flex; justify-content: center; gap: 8px; margin: 0 0 16px; }
+.preview-mode-switch button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 18px; color: var(--ink); background: var(--paper); }
+.preview-mode-switch button[aria-pressed=true] { border-color: var(--brand-200); background: var(--brand-100); }
+@media(max-width: 600px) {
+  .local-preview-nav { gap: 5px; padding-inline: 6px; justify-content: stretch; }
+  .local-preview-nav > span { display: none; }
+  .local-preview-nav button { flex: 1; font-size: 11px; padding-inline: 6px; }
+}
 .flow-screen .pal-text b { font-size: 12px; }
 .flow-screen .pal-text small,.flow-screen .flow-tip { font-size: 11px; }
 .flow-screen:not(.compact) .field input,.flow-screen:not(.compact) .field textarea,.flow-screen:not(.compact) .field select { font-size: 13px; }

@@ -86,10 +86,10 @@ export const flowTemplateOptions: Array<{ id: FlowTemplateId; title: string; des
   { id: "catalog", title: "Витрина и цены", description: "Кнопки по разделам, цены и переход к заказу" },
   { id: "faq", title: "Ответы на вопросы", description: "Частые вопросы кнопками и передача оператору" },
   { id: "delivery", title: "Меню и доставка", description: "Меню кнопками, адрес и время доставки" },
-  { id: "course", title: "Курс и обучение", description: "Уроки по шагам, проверка задания, доступ дальше" },
+  { id: "course", title: "Курс и обучение", description: "Первый урок и сбор задания для вашей проверки" },
   { id: "club", title: "Закрытый клуб", description: "Анкета на входе и заявка в закрытый канал" },
-  { id: "quiz", title: "Квиз-подбор", description: "Пара вопросов — и бот подбирает вариант" },
-  { id: "event", title: "Афиша и запись", description: "Расписание, регистрация и напоминание" },
+  { id: "quiz", title: "Квиз-подбор", description: "Пожелания, бюджет и контакт для вашей подборки" },
+  { id: "event", title: "Афиша и запись", description: "Описание события и контакты участника" },
   { id: "reviews", title: "Отзывы и оценка", description: "Оценка после визита и разбор жалоб" },
   { id: "blank", title: "С нуля", description: "Одна команда и одно сообщение" },
 ];
@@ -107,7 +107,7 @@ type Step =
   | { kind: "question"; text: string; variable: string; expects?: "any" | "email" | "phone" | "number"; retryText?: string }
   | { kind: "handoff"; text: string };
 
-function lineFlow(name: string, command: string, steps: Step[], branches: Array<{ from: number; button: string; steps: Step[] }> = []): BotFlowDocument {
+function lineFlow(name: string, command: string, steps: Step[], branches: Array<{ from: number; button: string; steps: Step[]; resumeAt?: number }> = []): BotFlowDocument {
   const id = () => crypto.randomUUID();
   const nodes: FlowNode[] = [];
   const edges: BotFlowDocument["edges"] = [];
@@ -142,7 +142,16 @@ function lineFlow(name: string, command: string, steps: Step[], branches: Array<
     const buttons = step !== undefined && step.kind === "message" ? step.buttons ?? [] : [];
     const handle = `b${buttons.indexOf(branch.button) + 1}`;
     if (source === undefined || !handle.endsWith(String(buttons.indexOf(branch.button) + 1)) || buttons.indexOf(branch.button) < 0) return;
-    chain(branch.steps, index + 1, branch.from + 2, { node: source, handle });
+    const branchIds = chain(branch.steps, index + 1, branch.from + 2, { node: source, handle });
+    // Secondary routes rejoin the same form; visible CTA buttons must never be dead ends.
+    if (branch.resumeAt !== undefined) {
+      const target = trunk[branch.resumeAt];
+      if (target === undefined) throw new Error("Invalid template resume step");
+      const lastId = branchIds.at(-1);
+      const lastStep = branch.steps.at(-1);
+      const fromHandle = lastId === undefined ? handle : lastStep?.kind === "message" && (lastStep.buttons?.length ?? 0) > 0 ? "b1" : "next";
+      edges.push({ id: `e${edges.length + 1}`, from: lastId ?? source, fromHandle, to: target });
+    }
   });
 
   return { schemaVersion: 1, metadata: { name }, nodes, edges };
@@ -155,7 +164,7 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
     { kind: "question", text: "Оставьте телефон — перезвоним в течение часа.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
     { kind: "message", text: "Спасибо, {{name}}! Перезвоним на {{phone}} в ближайший час." },
   ], [
-    { from: 0, button: "Сколько стоит", steps: [{ kind: "message", text: "Консультация бесплатно, работы — от 1 500 ₽.", buttons: ["Оставить заявку"] }] },
+    { from: 0, button: "Сколько стоит", steps: [{ kind: "message", text: "Консультация бесплатно, работы — от 1 500 ₽.", buttons: ["Оставить заявку"] }], resumeAt: 1 },
   ]),
 
   booking: (name) => lineFlow(name, "start", [
@@ -164,7 +173,7 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
     { kind: "question", text: "Оставьте телефон — подтвердим время.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
     { kind: "message", text: "Записали, {{name}}! Перезвоним на {{phone}} и подтвердим время." },
   ], [
-    { from: 0, button: "Окрашивание", steps: [{ kind: "message", text: "Окрашивание занимает до трёх часов. Записываем?", buttons: ["Записаться"] }] },
+    { from: 0, button: "Окрашивание", steps: [{ kind: "message", text: "Окрашивание занимает до трёх часов. Записываем?", buttons: ["Записаться"] }], resumeAt: 1 },
   ]),
 
   catalog: (name) => lineFlow(name, "start", [
@@ -173,7 +182,8 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
     { kind: "question", text: "Оставьте телефон — менеджер соберёт заказ.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
     { kind: "message", text: "Спасибо! Свяжемся по номеру {{phone}}." },
   ], [
-    { from: 0, button: "Доставка", steps: [{ kind: "message", text: "По городу — на следующий день, самовывоз — в тот же.", buttons: ["Заказать"] }] },
+    { from: 0, button: "Доставка", steps: [{ kind: "message", text: "По городу — на следующий день, самовывоз — в тот же.", buttons: ["Заказать"] }], resumeAt: 2 },
+    { from: 0, button: "Заказать", steps: [], resumeAt: 2 },
   ]),
 
   faq: (name) => lineFlow(name, "start", [
@@ -191,16 +201,16 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
     { kind: "question", text: "Оставьте телефон для курьера.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
     { kind: "message", text: "Принято! Привезём на {{address}}, курьер наберёт {{phone}}." },
   ], [
-    { from: 0, button: "Напитки", steps: [{ kind: "message", text: "Кофе — 180 ₽\nЛимонад — 220 ₽", buttons: ["Заказать"] }] },
+    { from: 0, button: "Напитки", steps: [{ kind: "message", text: "Кофе — 180 ₽\nЛимонад — 220 ₽", buttons: ["Заказать"] }], resumeAt: 2 },
   ]),
 
   course: (name) => lineFlow(name, "start", [
     { kind: "message", text: "Добро пожаловать на курс! Начнём с первого урока?", buttons: ["Начать урок", "Что внутри"] },
     { kind: "message", text: "Урок 1. Посмотрите материал и выполните задание.", buttons: ["Задание выполнено"] },
     { kind: "question", text: "Пришлите ссылку или короткий отчёт по заданию.", variable: "homework", retryText: "Напишите отчёт текстом или пришлите ссылку." },
-    { kind: "message", text: "Принято! Проверим и откроем урок 2. Отчёт: {{homework}}" },
+    { kind: "message", text: "Принято! Преподаватель проверит задание и свяжется с вами. Отчёт: {{homework}}" },
   ], [
-    { from: 0, button: "Что внутри", steps: [{ kind: "message", text: "Восемь уроков, задания с проверкой и чат с преподавателем.", buttons: ["Начать урок"] }] },
+    { from: 0, button: "Что внутри", steps: [{ kind: "message", text: "Первый урок и задание. Преподаватель проверяет ответы самостоятельно.", buttons: ["Начать урок"] }], resumeAt: 1 },
   ]),
 
   club: (name) => lineFlow(name, "start", [
@@ -209,7 +219,7 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
     { kind: "question", text: "Оставьте телефон или почту для связи.", variable: "contact", retryText: "Напишите телефон или почту." },
     { kind: "message", text: "Спасибо! Заявка у нас: {{about}}. Ответим на {{contact}} в течение дня." },
   ], [
-    { from: 0, button: "Что даёт клуб", steps: [{ kind: "message", text: "Закрытый канал, разборы раз в неделю и общий чат.", buttons: ["Ответить"] }] },
+    { from: 0, button: "Что даёт клуб", steps: [{ kind: "message", text: "Расскажите о себе в анкете. Организатор рассмотрит заявку и сообщит условия вступления.", buttons: ["Ответить"] }], resumeAt: 1 },
   ]),
 
   quiz: (name) => lineFlow(name, "start", [
@@ -223,10 +233,10 @@ const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotF
   event: (name) => lineFlow(name, "start", [
     { kind: "message", text: "Ближайшая встреча — в субботу в 18:00. Записать вас?", buttons: ["Записаться", "Что будет"] },
     { kind: "question", text: "Как вас зовут?", variable: "name", retryText: "Напишите имя текстом, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон — пришлём напоминание.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Ждём вас, {{name}}! Напомним на {{phone}} за день до встречи." },
+    { kind: "question", text: "Оставьте телефон для связи с организатором.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
+    { kind: "message", text: "Спасибо, {{name}}! Заявка на участие принята. Контакт для организатора: {{phone}}." },
   ], [
-    { from: 0, button: "Что будет", steps: [{ kind: "message", text: "Два часа практики, разбор вопросов и чай.", buttons: ["Записаться"] }] },
+    { from: 0, button: "Что будет", steps: [{ kind: "message", text: "Два часа практики, разбор вопросов и чай.", buttons: ["Записаться"] }], resumeAt: 1 },
   ]),
 
   reviews: (name) => lineFlow(name, "start", [

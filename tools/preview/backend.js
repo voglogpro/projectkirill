@@ -51,7 +51,13 @@ export function createBackend(notify) {
     return { planCode: plan.code, maxProjects: plan.maxProjects, maxActiveBots: plan.maxActiveBots, canPublish: plan.maxActiveBots > 0, ...(active ? { validUntil: granted.validUntil } : {}) };
   }
   function projectFor(user, projectId) { return state.projects.find((item) => item.id === projectId && item.ownerId === user.id); }
-  function publicProject(project) { return { id: project.id, name: project.name, status: project.status, publishedReleaseId: project.publishedReleaseId ?? null, updatedAt: project.updatedAt }; }
+  function publicProject(project) {
+    // Old saved preview fixtures predate entryPageId. Resolve only this project's
+    // own pages, matching the production ProjectRecord without a data migration.
+    const entry = state.pages.find((page) => page.projectId === project.id && page.id === project.entryPageId)
+      ?? state.pages.find((page) => page.projectId === project.id);
+    return { id: project.id, publicId: project.publicId, name: project.name, slug: project.slug, entryPageId: entry?.id ?? null, status: project.status, publishedReleaseId: project.publishedReleaseId ?? null, updatedAt: project.updatedAt };
+  }
   function pageBody(page) { return { id: page.id, projectId: page.projectId, slug: page.slug, title: page.title, document: page.document, revision: page.revision, updatedAt: page.updatedAt }; }
   function emptyDocument(title) { return { schemaVersion: 1, metadata: { title }, settings: { maxWidth: "normal", respectTelegramTheme: true }, blocks: [] }; }
 
@@ -143,9 +149,10 @@ export function createBackend(notify) {
       const limit = entitlementFor(user.id).maxProjects;
       const owned = state.projects.filter((item) => item.ownerId === user.id);
       if (owned.length >= limit) return fail(403, "PLAN_LIMIT_REACHED", `Текущий тариф разрешает ${limit} проект(а)`);
-      const project = { id: uuid(), ownerId: user.id, name: String(payload.name ?? "Новый проект"), slug: String(payload.slug ?? `project-${Date.now()}`), publicId: `app${Math.random().toString(36).slice(2, 10)}`, status: "draft", publishedReleaseId: null, updatedAt: now() };
+      const entryPageId = uuid();
+      const project = { id: uuid(), ownerId: user.id, name: String(payload.name ?? "Новый проект"), slug: String(payload.slug ?? `project-${Date.now()}`), publicId: `app${Math.random().toString(36).slice(2, 10)}`, entryPageId, status: "draft", publishedReleaseId: null, updatedAt: now() };
       state.projects.push(project);
-      state.pages.push({ id: uuid(), projectId: project.id, slug: "home", title: "Главная", document: emptyDocument("Главная"), revision: 1, updatedAt: now() });
+      state.pages.push({ id: entryPageId, projectId: project.id, slug: "home", title: "Главная", document: emptyDocument("Главная"), revision: 1, updatedAt: now() });
       changed();
       return ok(publicProject(project), 201);
     }

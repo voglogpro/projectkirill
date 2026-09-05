@@ -34,6 +34,8 @@ export interface BuilderPage {
 }
 
 export interface ProjectState {
+  /** A free, isolated browser draft. Never autosave it over a cloud project. */
+  storageMode?: "local-preview";
   id: string;
   name: string;
   status: "draft" | "active" | "suspended";
