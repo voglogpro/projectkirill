@@ -16,6 +16,7 @@ interface ClaimedUpdateRow {
   encrypted_token: SealedSecret;
   mini_app_url: string;
   menu_button_text: string;
+  mini_app_enabled: boolean;
 }
 
 export class PostgresTelegramUpdateJobRepository implements TelegramUpdateJobRepository {
@@ -46,9 +47,11 @@ export class PostgresTelegramUpdateJobRepository implements TelegramUpdateJobRep
           b.project_id,
           b.encrypted_token,
           b.mini_app_url,
-          b.menu_button_text
+          b.menu_button_text,
+          p.kit IN ('bot-app', 'bot-app-site') AS mini_app_enabled
         FROM telegram_updates u
         JOIN bot_integrations b ON b.id = u.integration_id
+        JOIN projects p ON p.id = b.project_id
         WHERE u.processed_at IS NULL
           AND u.dead_lettered_at IS NULL
           AND u.next_attempt_at <= now()
@@ -58,6 +61,7 @@ export class PostgresTelegramUpdateJobRepository implements TelegramUpdateJobRep
             OR u.processing_started_at < now() - (${options.leaseSeconds} * interval '1 second')
           )
           AND b.status = 'active'
+          AND project_launch_allowed(p.id)
         ORDER BY u.next_attempt_at, u.received_at, u.update_id
         FOR UPDATE OF u SKIP LOCKED
         LIMIT 1
@@ -79,7 +83,8 @@ export class PostgresTelegramUpdateJobRepository implements TelegramUpdateJobRep
         c.project_id,
         c.encrypted_token,
         c.mini_app_url,
-        c.menu_button_text
+        c.menu_button_text,
+        c.mini_app_enabled
     `;
     const row = rows[0];
     return row === undefined
@@ -93,6 +98,7 @@ export class PostgresTelegramUpdateJobRepository implements TelegramUpdateJobRep
           encryptedToken: row.encrypted_token,
           miniAppUrl: row.mini_app_url,
           menuButtonText: row.menu_button_text,
+          miniAppEnabled: row.mini_app_enabled,
           payload: row.payload,
         };
   }

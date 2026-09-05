@@ -70,6 +70,15 @@ function fixture(payload: TelegramUpdateJob["payload"], stored: DialogState | nu
 const chat = { id: 5150, type: "private" as const };
 
 describe("telegram worker running a published scenario", () => {
+  it("never exposes a Mini App button for a text-only paid bot", async () => {
+    const { worker, telegram, job } = fixture({ update_id: 7, message: { chat, text: "/start" } });
+    job.miniAppEnabled = false;
+    expect(await worker.runOnce()).toBe("processed");
+    const [, options] = telegram.sendMessage.mock.calls[0] ?? [];
+    expect(options.buttons).toEqual([{ text: "Да", callbackData: "book" }]);
+    expect(options.webAppButton).toBeUndefined();
+  });
+
   it("answers /start with the scenario message and its inline buttons", async () => {
     const { worker, telegram, dialogs } = fixture({ update_id: 7, message: { chat, text: "/start" } });
     expect(await worker.runOnce()).toBe("processed");

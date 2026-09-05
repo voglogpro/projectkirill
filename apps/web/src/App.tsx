@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { createRemoteProject, ensureRemoteProject, getCurrentUser, getEntitlement, hasSession, listRemoteProjects, loadRemoteProject, promoteLocalPreview, publishProject, saveRemoteProject } from "./api";
+import { createRemoteProject, ensureRemoteProject, getCurrentUser, getEntitlement, hasSession, listRemoteProjects, loadRemoteFlow, loadRemoteProject, promoteLocalPreview, publishProject, publishRemoteFlow, saveRemoteProject } from "./api";
 import { AuthModal } from "./components/AuthModal";
 import { Builder } from "./components/Builder";
 import { Dashboard } from "./components/Dashboard";
@@ -15,9 +15,10 @@ import { createFlowFromTemplate, createStarterFlow, flowTemplateOptions, loadFlo
 import { listPreviewProjects, loadPreviewFlow, loadPreviewProject, previewIdFromUrl, savePreviewFlow } from "./local-preview";
 import { createProjectFromTemplate, loadProject, saveProject } from "./store";
 import type { ProductKit, ProjectState } from "./types";
+import { planFitsKit, priceForKit, type PaidBillingPlanCode } from "./pricing";
 
 type Screen = "landing" | "hub" | "onboarding" | "dashboard" | "builder" | "flow" | "legal" | "service";
-type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio"; kit?: ProductKit };
+type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: PaidBillingPlanCode; kit?: ProductKit };
 const routeFor: Record<Screen, string> = { landing: "/", hub: "/hub", onboarding: "/start", dashboard: "/workspace", builder: "/builder", flow: "/flow", legal: "/privacy", service: "/service" };
 function screenFromPath(path: string): Screen { return path === "/privacy" || path === "/terms" ? "legal" : path.startsWith("/service") ? "service" : path.startsWith("/flow") ? "flow" : path.startsWith("/builder") ? "builder" : path.startsWith("/workspace") || path.startsWith("/billing/return") ? "dashboard" : path.startsWith("/start") ? "onboarding" : path.startsWith("/hub") || path.startsWith("/guide") ? "hub" : "landing"; }
 
@@ -57,7 +58,7 @@ export function App() {
     let active = true;
     void loadRemoteProject(project.id).then((remote) => {
       if (active) {
-        const restored = { ...remote, kit: project.kit, activePageId: remote.pages.some((page) => page.id === project.activePageId) ? project.activePageId : remote.activePageId };
+        const restored = { ...remote, activePageId: remote.pages.some((page) => page.id === project.activePageId) ? project.activePageId : remote.activePageId };
         setProject(restored); saveProject(restored);
       }
     }).catch((reason) => { if (active) setToast(messageFrom(reason, "Не удалось восстановить проект")); });
@@ -123,8 +124,8 @@ export function App() {
     finally { setBusy(false); }
   }
 
-  async function pickKit(kit: ProductKit) {
-    setIntent({ kit });
+  async function pickKit(kit: ProductKit, plan?: PaidBillingPlanCode) {
+    setIntent((current) => ({ kit, plan: plan ?? (current.plan && planFitsKit(current.plan, kit) ? current.plan : undefined) }));
     const existing = listPreviewProjects().find((item) => item.kit === kit);
     const names: Record<ProductKit, string> = { bot: "Мой текстовый бот", "bot-app": "Мой Mini App", "bot-app-site": "Мой проект", site: "Мой сайт" };
     const next: ProjectState = existing ?? { ...createProjectFromTemplate(kit === "bot-app" ? "catalog" : "services", names[kit]), kit, storageMode: "local-preview" };
@@ -166,8 +167,10 @@ export function App() {
       const entitlement = await getEntitlement();
       const ready = { ...synced, plan: entitlement.planCode };
       updateProject(ready);
-      if (ready.botUsername && ready.botStatus === "active" && entitlement.canPublish) {
+      if (ready.botUsername && ready.botStatus === "active" && entitlement.canPublish && (planFitsKit(entitlement.planCode, ready.kit ?? "bot") || Boolean(ready.legacyFullAccessUntil && Date.parse(ready.legacyFullAccessUntil) > Date.now()))) {
         await publishProject(ready.id);
+        await loadRemoteFlow(ready.id);
+        await publishRemoteFlow(ready.id);
         updateProject({ ...ready, status: "active", previewed: true, hasPendingChanges: false });
         setToast("Изменения опубликованы — Mini App уже обновлён");
         return;
@@ -196,16 +199,16 @@ export function App() {
     {screen === "landing" && <Landing onStart={(value) => void start(value)} onService={() => navigate("service")} />}
     {screen === "service" && <Service onStart={() => void start()} onHome={() => navigate("landing")} />}
     {screen === "legal" && <LegalPage kind={location.pathname === "/terms" ? "terms" : "privacy"} onBack={() => navigate("landing")} />}
-    {screen === "hub" && <StartHub userName={getCurrentUser()?.displayName} pending={busy} projects={[...projects, ...listPreviewProjects().map((item) => ({ id: item.id, name: `${item.name} · на устройстве` }))]} onPick={(kit) => void pickKit(kit)} onTemplate={(templateId) => { setIntent({ templateId, kit: "bot" }); void finishOnboarding(templateId, flowTemplateOptions.find((item) => item.id === templateId)?.title ?? "Мой бот", "bot"); }} onOpenProject={(id) => void openProject(id)} onSkip={() => void openWorkspace()} />}
+    {screen === "hub" && <StartHub userName={getCurrentUser()?.displayName} pending={busy} projects={[...projects, ...listPreviewProjects().map((item) => ({ id: item.id, name: `${item.name} · на устройстве` }))]} onPick={(kit, plan) => void pickKit(kit, plan)} onTemplate={(templateId) => { setIntent({ templateId, kit: "bot" }); void finishOnboarding(templateId, flowTemplateOptions.find((item) => item.id === templateId)?.title ?? "Мой бот", "bot"); }} onOpenProject={(id) => void openProject(id)} onSkip={() => void openWorkspace()} />}
     {screen === "onboarding" && <Onboarding initialTemplate={intent.templateId} pending={busy} onBack={() => navigate("hub")} onCreate={(templateId, name) => void finishOnboarding(templateId, name)} />}
-    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onHome={() => navigate("landing")} onNewProject={() => navigate("hub")} onGuide={() => navigate("hub")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
+    {screen === "dashboard" && <Dashboard project={project} onProjectChange={updateProject} onEdit={() => navigate("builder")} onEditFlow={() => navigate("flow")} onPreview={() => preview()} onLaunch={() => void launch()} onReconnect={() => setLaunchOpen(true)} onHome={() => navigate("landing")} onNewProject={() => navigate("hub")} onGuide={() => navigate("hub")} onOpenProject={async (id) => { setBusy(true); try { updateProject(await loadRemoteProject(id)); } catch (reason) { setToast(messageFrom(reason, "Не удалось открыть проект")); } finally { setBusy(false); } }} onMessage={setToast} />}
     {project.storageMode === "local-preview" && (screen === "builder" || screen === "flow") && <nav className="local-preview-nav" aria-label="Конструкторы черновика"><span>Бесплатный черновик</span><button aria-pressed={screen === "flow"} onClick={() => navigate("flow", false, project.id)}>Бот</button><button aria-pressed={screen === "builder"} onClick={() => navigate("builder", false, project.id)}>Mini App / сайт</button><button onClick={() => navigate("hub")}>Все конструкторы</button></nav>}
     {screen === "flow" && <FlowEditor key={project.id} localOnly={project.storageMode === "local-preview"} flow={flow} projectId={project.id} onChange={(next) => { setFlow(next); if (project.storageMode === "local-preview") savePreviewFlow(project.id, next); else saveFlow(next); }} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onLaunch={() => void launch()} onMessage={setToast} />}
     {screen === "builder" && <Builder key={project.id} initialProject={project} onChange={updateProject} onBack={() => navigate(project.storageMode === "local-preview" ? "hub" : "dashboard")} onPreview={(current) => preview(current)} onLaunch={(current) => void launch(current)} onMessage={setToast} />}
     {authOpen && <AuthModal initialMode={intent.mode ?? "register"} onClose={() => { setAuthOpen(false); setResumeDraftSave(false); setResumeLaunch(false); }} onAuthenticated={afterAuth} onDemo={() => { setAuthOpen(false); setResumeDraftSave(false); setResumeLaunch(false); navigate("onboarding"); }} />}
-    {launchOpen && <LaunchModal projectId={project.id} initialPlan={project.plan === "trio" ? "trio" : intent.plan} existingBot={project.botUsername && project.botStatus === "active" ? { username: project.botUsername, miniAppUrl: project.miniAppUrl } : undefined} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl, botStatus: "active", previewed: true, hasPendingChanges: false }); setToast("Бот опубликован и готов принимать клиентов"); }} />}
+    {launchOpen && <LaunchModal projectId={project.id} projectKit={project.kit ?? "bot"} legacyFullAccessUntil={project.legacyFullAccessUntil} initialPlan={project.plan === "free" ? intent.plan : project.plan} existingBot={project.botUsername && project.botStatus === "active" ? { username: project.botUsername, miniAppUrl: project.miniAppUrl } : undefined} onClose={() => setLaunchOpen(false)} onLaunched={(result) => { updateProject({ ...project, status: "active", plan: result.plan, botUsername: result.botUsername, miniAppUrl: result.miniAppUrl, botStatus: "active", previewed: true, hasPendingChanges: false }); setToast("Бот опубликован и готов принимать клиентов"); }} />}
     {previewOpen && <PreviewModal project={project} onClose={() => setPreviewOpen(false)} />}
-    {draftSaveOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDraftSaveOpen(false); }}><div className="draft-save-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-save-title"><h2 id="draft-save-title">Готовы к запуску?</h2><p>Редактирование и предпросмотр бесплатны. Этот черновик хранится отдельно на вашем устройстве.</p><p>Для запуска сохраним его новым проектом в аккаунте, затем откроем настройку хостинга. Существующий проект не заменяется. Если лимит облачных проектов занят, пробная копия всё равно останется доступна.</p><p className="muted">350 ₽/мес — один бот, 650 ₽/мес — до трёх. Сейчас деньги не списываются.</p><button className="primary-button" disabled={busy} onClick={() => void saveDraftToAccount()}>{hasSession() ? "Сохранить и настроить запуск" : "Войти для сохранения"}</button><button className="outline-button" disabled={busy} onClick={() => setDraftSaveOpen(false)}>Продолжить бесплатно</button></div></div>}
+    {draftSaveOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDraftSaveOpen(false); }}><div className="draft-save-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-save-title"><h2 id="draft-save-title">Готовы к запуску?</h2><p>Редактирование и предпросмотр бесплатны. Этот черновик хранится отдельно на вашем устройстве.</p><p>Для запуска сохраним его новым проектом в аккаунте, затем откроем настройку хостинга. Существующий проект не заменяется. Если лимит облачных проектов занят, пробная копия всё равно останется доступна.</p><p className="muted">Запуск этого формата — {priceForKit(project.kit ?? "bot")} ₽/мес. 650 ₽ — либо три текстовых бота, либо один проект с Mini App и сайтом по желанию. Сейчас деньги не списываются.</p><button className="primary-button" disabled={busy} onClick={() => void saveDraftToAccount()}>{hasSession() ? "Сохранить и настроить запуск" : "Войти для сохранения"}</button><button className="outline-button" disabled={busy} onClick={() => setDraftSaveOpen(false)}>Продолжить бесплатно</button></div></div>}
     {busy && <div className="global-busy" role="status">Сохраняем…</div>}
     {toast && <div className="toast" role="status">{toast}</div>}
   </>;

@@ -83,9 +83,10 @@ export async function registerCoreRoutes(app: FastifyInstance, service: CoreServ
   });
   app.get("/v1/public/apps/:publicId", async (request, reply) => {
     try {
-      const manifest = await service.getPublicApp(publicParams.parse(request.params).publicId);
+      const { surface } = z.object({ surface: z.enum(["miniapp", "site"]).default("miniapp") }).parse(request.query);
+      const manifest = await service.getPublicApp(publicParams.parse(request.params).publicId, surface);
       reply.header("etag", `\"${manifest.release.contentHash}\"`);
-      reply.header("cache-control", "public, max-age=60, stale-while-revalidate=300");
+      reply.header("cache-control", "private, no-store");
       return await reply.send({ data: manifest });
     } catch (error) {
       const handled = await sendHttpError(error, reply);

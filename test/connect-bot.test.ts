@@ -47,6 +47,16 @@ describe("ConnectBotService", () => {
     expect(telegram.getMe).not.toHaveBeenCalled();
   });
 
+  it("clears the Mini App menu for a text-only bot", async () => {
+    const { service, projectId, publicId, repository, telegram } = fixture();
+    telegram.clearChatMenuButton = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(repository.findOwnedProject).mockResolvedValue({ id: projectId, publicId, kit: "bot" });
+    const result = await service.execute(randomUUID(), { projectId, botToken: "123456789:abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJK" });
+    expect(telegram.setChatMenuButton).not.toHaveBeenCalled();
+    expect(telegram.clearChatMenuButton).toHaveBeenCalledOnce();
+    expect(result.miniAppUrl).toBe("");
+  });
+
   it("marks the integration as failed when setMenuButton fails", async () => {
     const { service, projectId, repository, telegram, integrationId } = fixture();
     vi.mocked(telegram.setChatMenuButton).mockRejectedValue(new Error("upstream unavailable"));

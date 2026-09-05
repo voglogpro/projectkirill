@@ -2,8 +2,9 @@ import { ArrowRight, Bot, Check, Globe, MessageSquareText, Rocket, Smartphone, S
 import { useEffect, useRef, useState } from "react";
 import type { FlowTemplateId } from "../flow-store";
 import { TemplateCatalog } from "./TemplateCatalog";
+import type { PaidBillingPlanCode } from "../pricing";
 
-type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: "solo" | "trio" };
+type StartIntent = { mode?: "register" | "login"; templateId?: FlowTemplateId; plan?: PaidBillingPlanCode };
 
 /**
  * Three products, one cabinet — the part people miss on the first read, so it
@@ -100,8 +101,9 @@ export function Landing({ onStart, onService }: { onStart: (intent?: StartIntent
         <div className="section-heading"><span>ТАРИФЫ</span><h2>Платите за то, что собрали</h2><p>Не за подписчиков: один сервер обслуживает всех, поэтому цена не растёт вместе с вами.</p></div>
         <div className="price-grid">
           <Price name="Черновик" price="0 ₽" description="Собрать и проверить" items={["Все четыре конструктора", "Проверка бота и страниц", "Один облачный проект", "Пробные копии на устройстве"]} action="Собрать бесплатно" onClick={() => onStart()} />
-          <Price featured name="Один бот" price="350 ₽" suffix="/ месяц" description="Запуск одного проекта" items={["Работающий Telegram-бот", "Mini App и страница проекта", "Заявки в кабинете", "Хостинг и HTTPS"]} action="Запустить бота" onClick={() => onStart({ plan: "solo" })} />
-          <Price name="До трёх ботов" price="650 ₽" suffix="/ месяц" description="Несколько проектов" items={["Всё из тарифа слева", "До трёх Telegram-ботов", "Mini App для каждого", "Один кабинет на всё"]} action="Выбрать тариф" onClick={() => onStart({ plan: "trio" })} />
+          <Price name="Один текстовый бот" price="350 ₽" suffix="/ месяц" description="Один бот без Mini App" items={["Сообщения и развилки", "Заявки в кабинете", "Хостинг включён", "Mini App не входит"]} action="Собрать бота" onClick={() => onStart({ plan: "solo" })} />
+          <Price name="Три текстовых бота" price="650 ₽" suffix="/ месяц" description="До трёх ботов без Mini App" items={["Три независимых сценария", "Общий кабинет", "Хостинг включён", "Mini App не входит"]} action="Выбрать пакет" onClick={() => onStart({ plan: "trio" })} />
+          <Price featured name="Студия" price="650 ₽" suffix="/ месяц" description="Один бот с Mini App" items={["Бот + Mini App", "Сайт по желанию", "Один проект, не три бота", "Хостинг и HTTPS"]} action="Создать Mini App" onClick={() => onStart({ plan: "studio" })} />
         </div>
       </section>
 

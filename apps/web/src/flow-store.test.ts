@@ -15,9 +15,15 @@ describe("scenario templates", () => {
     const document = botFlowDocumentSchema.parse(createFlowFromTemplate("leads", "Заявки"));
     let state = runFlow(document, initialDialogState(), { kind: "command", command: "/start" }).state;
     state = runFlow(document, state, { kind: "press", handle: "b1" }).state;
+    state = runFlow(document, state, { kind: "press", handle: "b1" }).state;
     state = runFlow(document, state, { kind: "text", text: "Анна" }).state;
+    state = runFlow(document, state, { kind: "text", text: "Создать каталог" }).state;
+    state = runFlow(document, state, { kind: "text", text: "50000" }).state;
+    state = runFlow(document, state, { kind: "text", text: "В октябре" }).state;
     const done = runFlow(document, state, { kind: "text", text: "+7 900 123-45-67" });
-    expect(done.state.variables.name).toBe("Анна");
+    expect(done.state.variables.r1_name).toBe("Анна");
+    expect(done.state.variables.r1_task).toBe("Создать каталог");
+    expect(done.state.variables.r1_budget).toBe("50000");
     expect(done.messages.at(-1)?.text).toContain("Анна");
     expect(done.messages.at(-1)?.text).toContain("+7 900 123-45-67");
   });
@@ -26,7 +32,7 @@ describe("scenario templates", () => {
     const document = botFlowDocumentSchema.parse(createFlowFromTemplate("faq", "Вопросы"));
     const greeted = runFlow(document, initialDialogState(), { kind: "command", command: "/start" }).state;
     expect(runFlow(document, greeted, { kind: "press", handle: "b2" }).messages[0]?.text).toContain("Консультация");
-    expect(runFlow(document, greeted, { kind: "press", handle: "b3" }).messages[0]?.text).toContain("оператору");
+    expect(runFlow(document, greeted, { kind: "press", handle: "b3" }).messages[0]?.text).toContain("оператора");
   });
 
   it.each(flowTemplateOptions.map((option) => option.id))("%s has no dead CTA or disconnected template node", (id) => {
@@ -51,7 +57,10 @@ describe("scenario templates", () => {
     const document = createFlowFromTemplate(id, "Проверка веток");
     function finishAllBranches(state: DialogState, depth: number): void {
       expect(depth).toBeLessThan(document.nodes.length * 2);
-      if (state.awaiting === undefined) return;
+      if (state.awaiting === undefined) {
+        if (id !== "blank") expect(Object.keys(state.variables).length).toBeGreaterThanOrEqual(2);
+        return;
+      }
       const current = document.nodes.find((node) => node.id === state.currentNodeId);
       expect(current).toBeDefined();
       if (current?.type === "message") {
@@ -63,14 +72,31 @@ describe("scenario templates", () => {
         }
       } else if (current?.type === "question") {
         const answers = { any: "Анна", phone: "+7 900 123-45-67", email: "anna@example.com", number: "5000" };
+        const invalid = runFlow(document, state, { kind: "text", text: current.props.expects === "any" ? "   " : "неверный ответ" });
+        expect(invalid.state.currentNodeId).toBe(current.id);
+        expect(invalid.state.variables).toEqual(state.variables);
+        expect(invalid.messages[0]?.text).toBe(current.props.retryText);
         const result = runFlow(document, state, { kind: "text", text: answers[current.props.expects] });
         expect(result.handled).toBe(true);
         expect(result.messages.length).toBeGreaterThan(0);
+        expect(result.state.variables[current.props.variable]).toBe(answers[current.props.expects]);
+        for (const message of result.messages) expect(message.text).not.toContain("{{");
         finishAllBranches(result.state, depth + 1);
       } else {
         throw new Error("Scenario stopped on an unsupported interaction");
       }
     }
     finishAllBranches(runFlow(document, initialDialogState(), { kind: "command", command: "/start" }).state, 0);
+  });
+
+  it.each(flowTemplateOptions.filter((option) => option.id !== "blank"))("$id is a multi-route editable solution with meaningful fields", ({ id }) => {
+    const document = createFlowFromTemplate(id, "Готовое решение");
+    expect(document.nodes.length).toBeGreaterThanOrEqual(12);
+    const greeting = runFlow(document, initialDialogState(), { kind: "command", command: "/start" });
+    expect(greeting.messages[0]?.buttons.length).toBeGreaterThanOrEqual(2);
+    const questions = document.nodes.filter((node) => node.type === "question");
+    expect(questions.length).toBeGreaterThanOrEqual(5);
+    expect(questions.some((node) => node.props.expects !== "any")).toBe(true);
+    expect(new Set(questions.map((node) => node.props.variable)).size).toBe(questions.length);
   });
 });

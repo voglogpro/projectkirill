@@ -19,6 +19,15 @@ function responseBody(overrides: Record<string, unknown> = {}) {
 }
 
 describe("YooKassaPaymentProvider", () => {
+  it("recognizes studio metadata independently of the trio plan at the same price", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(responseBody({
+      amount: { value: "650.00", currency: "RUB" },
+      metadata: { checkout_id: randomUUID(), user_id: randomUUID(), plan_code: "studio" },
+    })), { status: 200, headers: { "content-type": "application/json" } }));
+    const provider = new YooKassaPaymentProvider({ shopId: "test", secretKey: "test" }, fetchMock);
+    expect(await provider.getPayment("payment_123")).toMatchObject({ amountMinor: 65_000, metadata: { planCode: "studio" } });
+  });
+
   it("creates a captured reusable payment with an idempotency key", async () => {
     const checkoutId = randomUUID();
     const userId = randomUUID();
@@ -71,4 +80,3 @@ describe("YooKassaPaymentProvider", () => {
     expect(String(error)).not.toContain("reflected");
   });
 });
-

@@ -2,6 +2,7 @@ import type { Sql } from "postgres";
 import type { BotConnectionRepository, OwnedProject } from "../application/connect-bot.js";
 import type { SealedSecret } from "../crypto/token-vault.js";
 import { ConflictError, NotFoundError } from "../domain/errors.js";
+import { hasMiniApp, type ProductKit } from "../domain/product-kit.js";
 
 interface PostgresError {
   code?: string;
@@ -12,14 +13,14 @@ export class PostgresBotConnectionRepository implements BotConnectionRepository 
   public constructor(private readonly sql: Sql) {}
 
   public async findOwnedProject(projectId: string, ownerUserId: string): Promise<OwnedProject | null> {
-    const rows = await this.sql<{ id: string; public_id: string }[]>`
-      SELECT id, public_id
+    const rows = await this.sql<{ id: string; public_id: string; kit: ProductKit }[]>`
+      SELECT id, public_id, kit
       FROM projects
       WHERE id = ${projectId} AND owner_user_id = ${ownerUserId}
       LIMIT 1
     `;
     const row = rows[0];
-    return row === undefined ? null : { id: row.id, publicId: row.public_id };
+    return row === undefined ? null : { id: row.id, publicId: row.public_id, kit: row.kit };
   }
 
   public async reserve(input: {
@@ -98,13 +99,13 @@ export class PostgresBotConnectionRepository implements BotConnectionRepository 
   }
 
   public async getOwned(projectId: string, ownerUserId: string) {
-    const rows = await this.sql<Array<{ bot_username: string | null; bot_first_name: string; mini_app_url: string; status: "configuring" | "active" | "error" | "revoked" }>>`
-      SELECT bi.bot_username, bi.bot_first_name, bi.mini_app_url, bi.status
+    const rows = await this.sql<Array<{ bot_username: string | null; bot_first_name: string; mini_app_url: string; kit: ProductKit; status: "configuring" | "active" | "error" | "revoked" }>>`
+      SELECT bi.bot_username, bi.bot_first_name, bi.mini_app_url, bi.status, p.kit
       FROM bot_integrations bi JOIN projects p ON p.id = bi.project_id
       WHERE bi.project_id = ${projectId} AND p.owner_user_id = ${ownerUserId}
       LIMIT 1
     `;
     const row = rows[0];
-    return row === undefined ? null : { ...(row.bot_username === null ? {} : { botUsername: row.bot_username }), botFirstName: row.bot_first_name, miniAppUrl: row.mini_app_url, status: row.status };
+    return row === undefined ? null : { ...(row.bot_username === null ? {} : { botUsername: row.bot_username }), botFirstName: row.bot_first_name, miniAppUrl: hasMiniApp(row.kit) ? row.mini_app_url : "", status: row.status };
   }
 }

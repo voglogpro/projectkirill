@@ -77,6 +77,7 @@ export function saveFlow(flow: BotFlowDocument): void {
 export type FlowTemplateId =
   | "leads" | "booking" | "catalog" | "faq"
   | "delivery" | "course" | "club" | "quiz" | "event" | "reviews"
+  | "property" | "recruiting" | "repair" | "restaurant" | "fitness" | "consultation" | "photography" | "onboarding"
   | "blank";
 
 /** Bot scenarios are the front door now, so onboarding picks one of these. */
@@ -91,6 +92,14 @@ export const flowTemplateOptions: Array<{ id: FlowTemplateId; title: string; des
   { id: "quiz", title: "Квиз-подбор", description: "Пожелания, бюджет и контакт для вашей подборки" },
   { id: "event", title: "Афиша и запись", description: "Описание события и контакты участника" },
   { id: "reviews", title: "Отзывы и оценка", description: "Оценка после визита и разбор жалоб" },
+  { id: "property", title: "Подбор недвижимости", description: "Покупка или аренда: район, бюджет и заявка на просмотр" },
+  { id: "recruiting", title: "Подбор сотрудников", description: "Вакансии, опыт кандидата и анкета для рекрутера" },
+  { id: "repair", title: "Сервис и ремонт", description: "Устройство, неисправность и заявка на диагностику" },
+  { id: "restaurant", title: "Бронирование столика", description: "Обычный визит или банкет: дата, гости и пожелания" },
+  { id: "fitness", title: "Фитнес и тренировки", description: "Пробное занятие или персональная тренировка" },
+  { id: "consultation", title: "Бриф на консультацию", description: "Разбор задачи, ожиданий и материалов клиента" },
+  { id: "photography", title: "Заказ фотосъёмки", description: "Портрет или мероприятие: бриф и пожелания" },
+  { id: "onboarding", title: "Знакомство с командой", description: "Маршрут новичка, чек-лист и вопросы наставнику" },
   { id: "blank", title: "С нуля", description: "Одна команда и одно сообщение" },
 ];
 
@@ -99,6 +108,8 @@ export const pageTemplateForFlow: Record<FlowTemplateId, TemplateId> = {
   leads: "leads", booking: "booking", catalog: "catalog", faq: "services",
   delivery: "catalog", course: "services", club: "leads", quiz: "leads",
   event: "booking", reviews: "services", blank: "blank",
+  property: "catalog", recruiting: "leads", repair: "services", restaurant: "booking",
+  fitness: "booking", consultation: "leads", photography: "services", onboarding: "services",
 };
 
 /** Every template is a chain of steps; this turns one into a valid document. */
@@ -157,103 +168,125 @@ function lineFlow(name: string, command: string, steps: Step[], branches: Array<
   return { schemaVersion: 1, metadata: { name }, nodes, edges };
 }
 
-const templates: Record<Exclude<FlowTemplateId, "blank">, (name: string) => BotFlowDocument> = {
-  leads: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Здравствуйте! Оставьте заявку — перезвоним и всё расскажем.", buttons: ["Оставить заявку", "Сколько стоит"] },
-    { kind: "question", text: "Как вас зовут?", variable: "name", retryText: "Напишите имя текстом, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон — перезвоним в течение часа.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Спасибо, {{name}}! Перезвоним на {{phone}} в ближайший час." },
-  ], [
-    { from: 0, button: "Сколько стоит", steps: [{ kind: "message", text: "Консультация бесплатно, работы — от 1 500 ₽.", buttons: ["Оставить заявку"] }], resumeAt: 1 },
-  ]),
+type FormField = { variable: string; text: string; expects?: "any" | "email" | "phone" | "number" };
+type SolutionRoute = { label: string; intro: string; fields: readonly FormField[]; result: string };
+type SolutionRecipe = { welcome: string; routes: readonly SolutionRoute[] };
 
-  booking: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Здравствуйте! На какую услугу записать?", buttons: ["Стрижка", "Окрашивание"] },
-    { kind: "question", text: "Как вас зовут?", variable: "name", retryText: "Напишите имя текстом, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон — подтвердим время.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Записали, {{name}}! Перезвоним на {{phone}} и подтвердим время." },
-  ], [
-    { from: 0, button: "Окрашивание", steps: [{ kind: "message", text: "Окрашивание занимает до трёх часов. Записываем?", buttons: ["Записаться"] }], resumeAt: 1 },
-  ]),
-
-  catalog: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Здравствуйте! Что показать?", buttons: ["Цены", "Доставка", "Заказать"] },
-    { kind: "message", text: "Основная позиция — от 1 500 ₽.\nКомплект — от 3 900 ₽.", buttons: ["Заказать"] },
-    { kind: "question", text: "Оставьте телефон — менеджер соберёт заказ.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Спасибо! Свяжемся по номеру {{phone}}." },
-  ], [
-    { from: 0, button: "Доставка", steps: [{ kind: "message", text: "По городу — на следующий день, самовывоз — в тот же.", buttons: ["Заказать"] }], resumeAt: 2 },
-    { from: 0, button: "Заказать", steps: [], resumeAt: 2 },
-  ]),
-
-  faq: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Здравствуйте! Выберите вопрос или напишите свой.", buttons: ["Часы работы", "Сколько стоит", "Позвать человека"] },
-    { kind: "message", text: "Работаем с 10:00 до 20:00 без выходных." },
-  ], [
-    { from: 0, button: "Сколько стоит", steps: [{ kind: "message", text: "Консультация бесплатная, работы — от 1 500 ₽." }] },
-    { from: 0, button: "Позвать человека", steps: [{ kind: "handoff", text: "Передаю разговор оператору — ответим в рабочее время." }] },
-  ]),
-
-  delivery: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Здравствуйте! Меню на сегодня — выбирайте.", buttons: ["Горячее", "Напитки"] },
-    { kind: "message", text: "Плов — 420 ₽\nСуп дня — 260 ₽\nПаста — 390 ₽", buttons: ["Заказать"] },
-    { kind: "question", text: "Куда привезти? Напишите адрес и подъезд.", variable: "address", retryText: "Напишите адрес текстом, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон для курьера.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Принято! Привезём на {{address}}, курьер наберёт {{phone}}." },
-  ], [
-    { from: 0, button: "Напитки", steps: [{ kind: "message", text: "Кофе — 180 ₽\nЛимонад — 220 ₽", buttons: ["Заказать"] }], resumeAt: 2 },
-  ]),
-
-  course: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Добро пожаловать на курс! Начнём с первого урока?", buttons: ["Начать урок", "Что внутри"] },
-    { kind: "message", text: "Урок 1. Посмотрите материал и выполните задание.", buttons: ["Задание выполнено"] },
-    { kind: "question", text: "Пришлите ссылку или короткий отчёт по заданию.", variable: "homework", retryText: "Напишите отчёт текстом или пришлите ссылку." },
-    { kind: "message", text: "Принято! Преподаватель проверит задание и свяжется с вами. Отчёт: {{homework}}" },
-  ], [
-    { from: 0, button: "Что внутри", steps: [{ kind: "message", text: "Первый урок и задание. Преподаватель проверяет ответы самостоятельно.", buttons: ["Начать урок"] }], resumeAt: 1 },
-  ]),
-
-  club: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Это закрытый клуб. Пара вопросов — и мы вас впустим.", buttons: ["Ответить", "Что даёт клуб"] },
-    { kind: "question", text: "Чем вы занимаетесь?", variable: "about", retryText: "Расскажите в паре предложений, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон или почту для связи.", variable: "contact", retryText: "Напишите телефон или почту." },
-    { kind: "message", text: "Спасибо! Заявка у нас: {{about}}. Ответим на {{contact}} в течение дня." },
-  ], [
-    { from: 0, button: "Что даёт клуб", steps: [{ kind: "message", text: "Расскажите о себе в анкете. Организатор рассмотрит заявку и сообщит условия вступления.", buttons: ["Ответить"] }], resumeAt: 1 },
-  ]),
-
-  quiz: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Подберём подходящий вариант за три вопроса. Начнём?", buttons: ["Поехали"] },
-    { kind: "question", text: "Для кого подбираем: для себя или в подарок?", variable: "who", retryText: "Напишите «себе» или «в подарок»." },
-    { kind: "question", text: "Какой бюджет? Напишите числом в рублях.", variable: "budget", expects: "number", retryText: "Напишите бюджет числом, например 5000." },
-    { kind: "question", text: "Оставьте телефон — пришлём подборку.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Готово! Соберём варианты ({{who}}, до {{budget}} ₽) и пришлём на {{phone}}." },
-  ]),
-
-  event: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Ближайшая встреча — в субботу в 18:00. Записать вас?", buttons: ["Записаться", "Что будет"] },
-    { kind: "question", text: "Как вас зовут?", variable: "name", retryText: "Напишите имя текстом, пожалуйста." },
-    { kind: "question", text: "Оставьте телефон для связи с организатором.", variable: "phone", expects: "phone", retryText: "Похоже, это не телефон. Пример: +7 900 123-45-67" },
-    { kind: "message", text: "Спасибо, {{name}}! Заявка на участие принята. Контакт для организатора: {{phone}}." },
-  ], [
-    { from: 0, button: "Что будет", steps: [{ kind: "message", text: "Два часа практики, разбор вопросов и чай.", buttons: ["Записаться"] }], resumeAt: 1 },
-  ]),
-
-  reviews: (name) => lineFlow(name, "start", [
-    { kind: "message", text: "Спасибо, что были у нас! Как всё прошло?", buttons: ["Всё отлично", "Есть замечание"] },
-    { kind: "message", text: "Спасибо! Будем рады видеть вас снова." },
-  ], [
-    { from: 0, button: "Есть замечание", steps: [
-      { kind: "question", text: "Расскажите, что пошло не так — разберёмся.", variable: "issue", retryText: "Напишите пару слов, пожалуйста." },
-      { kind: "handoff", text: "Спасибо, передали руководителю. Свяжемся с вами лично." },
-    ] },
-  ]),
+const field = (variable: string, text: string, expects: FormField["expects"] = "any"): FormField => ({ variable, text, expects });
+const phone = field("phone", "Оставьте телефон для связи с вашей командой.", "phone");
+const person = field("name", "Как вас зовут?");
+const email = field("email", "На какую почту можно ответить?", "email");
+const when = field("when", "Какие дата и время вам удобны? Это пожелание — доступность подтвердит команда.");
+const retry: Record<NonNullable<FormField["expects"]>, string> = {
+  any: "Напишите ответ текстом, пожалуйста.",
+  phone: "Введите телефон, например +7 900 123-45-67.",
+  email: "Введите почту, например anna@example.com.",
+  number: "Введите число, например 5000.",
 };
+
+/**
+ * These are editable conversation recipes, not integrations or executable bot
+ * archives. Every route saves its own answers and ends with an explicit summary.
+ * Dates, stock and bookings are requests for the owner's manual confirmation.
+ */
+const recipes: Record<Exclude<FlowTemplateId, "blank">, SolutionRecipe> = {
+  leads: { welcome: "Поможем разобраться с задачей. Что вам нужно?", routes: [
+    { label: "Обсудить проект", intro: "Соберём короткий бриф, чтобы вы не объясняли всё заново при звонке.", fields: [person, field("task", "Что нужно сделать и какой результат вы ожидаете?"), field("budget", "Какой бюджет рассматриваете? Укажите число в рублях.", "number"), field("deadline", "К какому сроку нужен результат?"), phone], result: "Бриф на проект сохранён. Команда изучит задачу и свяжется с вами." },
+    { label: "Узнать условия", intro: "Демонстрационные условия: знакомство бесплатно, объём и стоимость работ согласуются после брифа.", fields: [person, field("question", "Что хотите уточнить о работе или стоимости?"), phone], result: "Вопрос об условиях сохранён для команды." },
+  ] },
+  booking: { welcome: "Студия красоты. Выберите услугу — соберём заявку на удобное время.", routes: [
+    { label: "Стрижка и укладка", intro: "Стрижка и укладка — пример услуги на 60 минут. Стоимость и время подтвердит администратор.", fields: [field("haircut", "Какую стрижку или укладку хотите?"), when, person, phone], result: "Заявка: стрижка и укладка. Запись не подтверждена автоматически — дождитесь ответа администратора." },
+    { label: "Окрашивание", intro: "Для окрашивания сначала уточним длину волос и желаемый результат.", fields: [field("colour", "Какие сейчас длина и цвет волос? Какой результат нужен?"), field("history", "Когда было последнее окрашивание?"), when, person, phone], result: "Заявка: окрашивание. Администратор уточнит длительность, цену и свободное время." },
+  ] },
+  catalog: { welcome: "Витрина подарков. Выберите готовый набор или соберите заявку на свой.", routes: [
+    { label: "Готовый набор", intro: "Пример ассортимента: «Уют» — 1 500 ₽, «Праздник» — 3 900 ₽. Наличие подтвердит менеджер.", fields: [field("product", "Какой набор выбрали?"), field("quantity", "Сколько наборов нужно? Укажите число.", "number"), field("delivery", "Самовывоз или доставка? Если доставка — укажите город."), person, phone], result: "Заявка на наборы сохранена. Менеджер подтвердит наличие и итоговую стоимость; оплата ещё не проводилась." },
+    { label: "Корпоративный заказ", intro: "Для команды можно подготовить наборы с разным наполнением. Соберём техническое задание.", fields: [field("company", "Название компании и повод для подарков?"), field("quantity", "Сколько получателей? Укажите число.", "number"), field("budget", "Бюджет на один подарок в рублях?", "number"), field("deadline", "Когда нужны подарки?"), email], result: "Бриф на корпоративный заказ сохранён для расчёта менеджером." },
+  ] },
+  faq: { welcome: "Центр помощи. Ответим на частые вопросы или соберём обращение.", routes: [
+    { label: "Часы работы", intro: "Пример графика: с 10:00 до 20:00. Замените адрес и часы под свой бизнес.", fields: [field("question", "Что ещё хотели бы уточнить о визите?"), phone], result: "Вопрос о визите сохранён для команды." },
+    { label: "Стоимость и условия", intro: "Консультация по условиям бесплатна. Стоимость заказа подтверждает менеджер.", fields: [field("service", "О какой услуге или товаре вопрос?"), field("question", "Что нужно уточнить?"), phone], result: "Запрос по стоимости сохранён." },
+    { label: "Написать оператору", intro: "Соберём контекст для оператора. Это обращение, а не подключение к живому чату.", fields: [field("order", "Номер заказа, если есть. Если нет — напишите «нет»."), field("issue", "Опишите проблему и что уже пробовали."), email], result: "Обращение сохранено. Команда ответит после просмотра; мгновенный ответ не гарантируется." },
+  ] },
+  delivery: { welcome: "Кухня рядом. Посмотрите меню и оставьте заявку на заказ.", routes: [
+    { label: "Доставка", intro: "Демонстрационное меню: паста 390 ₽, суп 260 ₽, лимонад 220 ₽. Доступность и сумму подтвердит команда.", fields: [field("order", "Перечислите блюда и количество каждого."), field("address", "Адрес, подъезд и домофон?"), when, field("notes", "Пожелания к заказу? Если нет — напишите «нет»."), phone], result: "Заявка на доставку сохранена. Это не подтверждение приготовления или отправки курьера." },
+    { label: "Самовывоз", intro: "Можно забрать заказ самостоятельно. Адрес точки и время готовности подтвердит команда.", fields: [field("order", "Какие блюда и в каком количестве приготовить?"), when, person, phone], result: "Заявка на самовывоз сохранена. Дождитесь подтверждения времени готовности." },
+  ] },
+  course: { welcome: "Мини-курс: первый клиент. Выберите урок или задайте вопрос преподавателю.", routes: [
+    { label: "Пройти два урока", intro: "Урок 1. Опишите одного конкретного клиента: чем он занимается и какая задача у него возникает. Урок 2. Предложение должно называть результат, срок и следующий шаг.", fields: [field("audience", "Практика 1: кто ваш клиент и какую задачу нужно решить?"), field("offer", "Практика 2: напишите предложение из результата, срока и следующего шага."), field("self_check", "Самопроверка: что в предложении может быть непонятно клиенту?"), email], result: "Две практические работы сохранены для проверки преподавателем. Автоматической оценки или выдачи сертификата нет." },
+    { label: "Вопрос по обучению", intro: "Можно уточнить программу или попросить помощь с упражнением.", fields: [person, field("lesson", "По какой теме или уроку вопрос?"), field("question", "Что именно вызывает затруднение?"), email], result: "Вопрос преподавателю сохранён." },
+  ] },
+  club: { welcome: "Клуб предпринимателей. Познакомимся перед вступлением.", routes: [
+    { label: "Подать анкету", intro: "Сообщество для обмена опытом. Вступление рассматривает организатор, доступ автоматически не выдаётся.", fields: [person, field("business", "Чем занимаетесь и на каком этапе ваш проект?"), field("goal", "С чем хотите разобраться в клубе?"), field("contribution", "Каким опытом готовы поделиться?"), email], result: "Анкета на вступление сохранена. Организатор отдельно сообщит решение и условия." },
+    { label: "Предложить встречу", intro: "Участники могут предложить тему разбора или выступление.", fields: [person, field("topic", "Тема и чему научатся участники?"), field("format", "Какой формат и длительность предлагаете?"), email], result: "Предложение встречи сохранено для организатора." },
+  ] },
+  quiz: { welcome: "Поможем составить запрос на подбор подарка.", routes: [
+    { label: "Подарок близкому", intro: "Несколько вопросов помогут консультанту предложить уместные варианты.", fields: [field("recipient", "Кому подарок и по какому поводу?"), field("interests", "Что человек любит, а чего лучше избегать?"), field("budget", "Бюджет в рублях?", "number"), field("deadline", "Когда нужен подарок?"), phone], result: "Запрос на персональную подборку сохранён. Варианты подготовит консультант, не автоматический алгоритм." },
+    { label: "Для себя", intro: "Соберём предпочтения, чтобы консультант не предлагал лишнее.", fields: [field("need", "Для какой задачи ищете вещь?"), field("preferences", "Какие характеристики для вас важны?"), field("budget", "Бюджет в рублях?", "number"), phone], result: "Ваши предпочтения сохранены для консультанта." },
+  ] },
+  event: { welcome: "Мастерская идей. Выберите формат участия.", routes: [
+    { label: "Стать участником", intro: "Пример программы: знакомство, практическая работа и разбор вопросов. Дату и место организатор укажет до запуска.", fields: [person, field("topic", "Какая тема или вопрос вам интересны?"), field("guests", "Сколько человек хотите зарегистрировать?", "number"), phone], result: "Заявка на участие сохранена. Места и условия подтвердит организатор; билет автоматически не выпущен." },
+    { label: "Выступить", intro: "Принимаем предложения от спикеров. Расскажите о докладе и своём опыте.", fields: [person, field("topic", "Тема выступления и три главных тезиса?"), field("experience", "Ваш опыт и ссылка на прошлые выступления, если есть?"), email], result: "Заявка спикера сохранена для программной команды." },
+  ] },
+  reviews: { welcome: "Помогите нам стать лучше. Как прошёл ваш визит?", routes: [
+    { label: "Хочу поблагодарить", intro: "Спасибо! Расскажите, что понравилось — это поможет команде сохранить хороший опыт.", fields: [field("visit", "Какой услугой пользовались и когда?"), field("feedback", "Что понравилось больше всего?"), field("permission", "Можно ли цитировать отзыв на нашем сайте? Напишите «да» или «нет».")], result: "Отзыв сохранён вместе с вашим ответом о публикации. Ничего не публикуется автоматически." },
+    { label: "Есть проблема", intro: "Нам важно разобраться. Опишите ситуацию — команда сможет рассмотреть обращение.", fields: [field("order", "Когда был визит или какой номер заказа?"), field("issue", "Что произошло?"), field("resolution", "Какой вариант решения вас устроит?"), phone], result: "Обращение с пожеланием по решению сохранено для команды." },
+  ] },
+  property: { welcome: "Недвижимость под вашу задачу: купить или арендовать?", routes: [
+    { label: "Купить квартиру", intro: "Соберём параметры для специалиста. Это заявка на подбор, не база актуальных объявлений.", fields: [field("location", "Город и подходящие районы?"), field("rooms", "Сколько комнат и какая площадь нужны?"), field("budget", "Максимальный бюджет в рублях?", "number"), field("timing", "Когда планируете покупку и просмотр?"), phone], result: "Заявка на покупку сохранена. Специалист подготовит предложения и согласует просмотр." },
+    { label: "Снять жильё", intro: "Уточним условия аренды, чтобы специалист мог подобрать варианты.", fields: [field("location", "Район и пожелания к транспорту?"), field("household", "Сколько жильцов, есть ли дети или питомцы?"), field("budget", "Бюджет аренды в месяц, в рублях?", "number"), field("move_in", "Когда планируете въезд и на какой срок?"), phone], result: "Заявка на аренду сохранена. Наличие и условия проверит специалист." },
+  ] },
+  recruiting: { welcome: "Команда растёт. Выберите направление и расскажите о себе.", routes: [
+    { label: "Работа с клиентами", intro: "Пример вакансии: специалист поддержки. Обязанности — помогать клиентам и разбирать обращения; условия уточняет рекрутер.", fields: [person, field("experience", "Есть ли опыт поддержки или продаж? Расскажите на примере."), field("schedule", "Какой график и формат работы вам подходят?"), field("resume", "Ссылка на резюме или краткий рассказ о навыках?"), email], result: "Отклик в клиентскую команду сохранён. Решение и приглашение отправляет рекрутер." },
+    { label: "Другая роль", intro: "Если подходящей вакансии нет, можно оставить анкету в резерв команды.", fields: [person, field("role", "Какую роль рассматриваете?"), field("skills", "Ваши ключевые навыки и опыт?"), field("resume", "Ссылка на портфолио или резюме? Если ссылки нет — напишите об опыте."), email], result: "Анкета в кадровый резерв сохранена для рекрутера." },
+  ] },
+  repair: { welcome: "Сервисный центр. Что нужно отремонтировать?", routes: [
+    { label: "Телефон или планшет", intro: "Не разбирайте устройство самостоятельно. Сначала соберём информацию для диагностики.", fields: [field("model", "Производитель и модель устройства?"), field("fault", "Что не работает и после чего появилась проблема?"), field("history", "Был ли контакт с водой или предыдущий ремонт?"), when, phone], result: "Заявка на диагностику телефона или планшета сохранена. Стоимость и сроки определит мастер после осмотра." },
+    { label: "Ноутбук или ПК", intro: "Опишите симптомы: это поможет мастеру подготовиться. Автоматической диагностики здесь нет.", fields: [field("model", "Модель ноутбука или конфигурация компьютера?"), field("fault", "Какие симптомы и сообщения об ошибке?"), field("data", "Нужно ли сохранить важные данные? Не присылайте пароли."), when, phone], result: "Заявка на диагностику компьютера сохранена для мастера." },
+  ] },
+  restaurant: { welcome: "Встречаем гостей. Оставьте пожелания к столику или мероприятию.", routes: [
+    { label: "Столик", intro: "Запросим удобное время и количество гостей. Столик считается забронированным только после подтверждения администратором.", fields: [when, field("guests", "Сколько будет гостей?", "number"), field("preferences", "Пожелания: зона, детское кресло или особый повод?"), person, phone], result: "Заявка на столик сохранена. Дождитесь подтверждения администратора." },
+    { label: "Банкет", intro: "Для праздника нужен небольшой бриф: дата, формат и бюджет.", fields: [field("occasion", "Какой повод и формат мероприятия?"), when, field("guests", "Ожидаемое количество гостей?", "number"), field("budget", "Общий бюджет в рублях?", "number"), phone], result: "Бриф на банкет сохранён. Администратор обсудит меню и условия отдельно." },
+  ] },
+  fitness: { welcome: "Выберите формат знакомства с клубом.", routes: [
+    { label: "Пробное занятие", intro: "Познакомимся с вашими пожеланиями. Доступное время и условия пробного занятия подтвердит администратор.", fields: [person, field("activity", "Какое направление интересно: зал, йога, танцы или другое?"), field("experience", "Занимались раньше или начинаете?"), when, phone], result: "Заявка на пробное занятие сохранена. Бот не даёт медицинских рекомендаций или программы тренировок." },
+    { label: "Персональный тренер", intro: "Расскажите о цели и расписании, чтобы команда могла предложить подходящего тренера.", fields: [person, field("goal", "Какую цель хотите обсудить с тренером?"), field("format", "Где хотите заниматься: клуб, улица или онлайн?"), when, phone], result: "Запрос на персонального тренера сохранён. План занятий согласуется со специалистом." },
+  ] },
+  consultation: { welcome: "Разберём задачу и подготовимся к консультации.", routes: [
+    { label: "Разбор проекта", intro: "Соберём контекст, чтобы встреча началась с сути, а не с повторного знакомства.", fields: [person, field("project", "Коротко о проекте и вашей роли?"), field("problem", "Что сейчас не получается?"), field("result", "Какой результат хотите получить от консультации?"), email], result: "Бриф на разбор проекта сохранён. Специалист предложит формат и условия встречи." },
+    { label: "Проверка материалов", intro: "Можно прислать ссылку на презентацию или описание задачи. Не отправляйте пароли и закрытые персональные данные.", fields: [field("material", "Ссылка на доступный материал или описание?"), field("criteria", "Что нужно проверить в первую очередь?"), field("deadline", "К какому сроку нужен ответ?"), email], result: "Запрос на проверку материалов сохранён для специалиста." },
+  ] },
+  photography: { welcome: "Фотосъёмка под ваш повод. Выберите формат.", routes: [
+    { label: "Портрет или семья", intro: "Подготовим съёмку по вашему настроению: место, участники и референсы.", fields: [field("participants", "Кого снимаем и сколько будет участников?"), field("style", "Какое настроение и стиль хотите? Можно прислать ссылку на референс."), field("location", "Студия, улица или ваша локация?"), when, phone], result: "Бриф на портретную или семейную съёмку сохранён. Дату и стоимость подтвердит фотограф." },
+    { label: "Репортаж", intro: "Для события уточним программу и ключевые моменты.", fields: [field("event", "Что за мероприятие и какие кадры особенно важны?"), field("location", "Место проведения?"), when, field("duration", "Сколько часов съёмки предполагается?", "number"), phone], result: "Бриф на репортаж сохранён. Фотограф уточнит доступность и условия." },
+  ] },
+  onboarding: { welcome: "Добро пожаловать в команду. Начните знакомство или задайте вопрос наставнику.", routes: [
+    { label: "Первый рабочий день", intro: "Чек-лист: познакомьтесь с наставником, уточните расписание и запросите нужные рабочие доступы через принятый в компании канал. Пароли в бот не отправляйте.", fields: [person, field("team", "В какой команде и роли начинаете работу?"), field("done", "Что из чек-листа уже готово?"), field("help", "С чем нужна помощь в первую очередь?"), email], result: "Чек-лист новичка сохранён. Наставник сможет разобрать открытые вопросы; доступы автоматически не выдаются." },
+    { label: "Вопрос наставнику", intro: "Соберём вопрос и контекст, чтобы наставнику было проще помочь.", fields: [person, field("topic", "Тема: процессы, инструменты, команда или другое?"), field("question", "Что хотите уточнить и что уже пробовали?"), email], result: "Вопрос наставнику сохранён." },
+  ] },
+};
+
+/** Branch-specific variable names preserve the chosen route in collected answers. */
+function createSolutionFlow(name: string, recipe: SolutionRecipe): BotFlowDocument {
+  const routeSteps = (route: SolutionRoute, index: number): Step[] => {
+    const fields = route.fields.map((item) => ({ ...item, variable: `r${index + 1}_${item.variable}` }));
+    return [
+      { kind: "message", text: route.intro, buttons: ["Продолжить"] },
+      ...fields.map((item): Step => ({ kind: "question", text: item.text, variable: item.variable, expects: item.expects ?? "any", retryText: retry[item.expects ?? "any"] })),
+      { kind: "message", text: `${route.result}\n\nВаши ответы:\n${fields.map((item) => `${item.text}\n{{${item.variable}}}`).join("\n\n")}` },
+    ];
+  };
+  const first = recipe.routes[0];
+  if (first === undefined) throw new Error("A solution needs at least one route");
+  return lineFlow(name, "start", [
+    { kind: "message", text: recipe.welcome, buttons: recipe.routes.map((route) => route.label) },
+    ...routeSteps(first, 0),
+  ], recipe.routes.slice(1).map((route, index) => ({ from: 0, button: route.label, steps: routeSteps(route, index + 1) })));
+}
 
 export function createFlowFromTemplate(template: FlowTemplateId, name: string): BotFlowDocument {
   const title = name.trim() || flowTemplateOptions.find((item) => item.id === template)?.title || "Мой бот";
   if (template === "blank") {
     return lineFlow(title, "start", [{ kind: "message", text: "Здравствуйте! Чем помочь?" }]);
   }
-  return templates[template](title);
+  return createSolutionFlow(title, recipes[template]);
 }

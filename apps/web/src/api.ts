@@ -1,10 +1,11 @@
 import type { BotFlowDocument } from "../../../src/domain/bot-flow";
-import type { BotConnectionStatus, BuilderBlock, Lead, ProjectState } from "./types";
+import type { BotConnectionStatus, BuilderBlock, Lead, ProductKit, ProjectState } from "./types";
+import type { BillingPlanCode, PaidBillingPlanCode } from "./pricing";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 const SESSION_KEY = "tma-studio-session";
 interface Session { accessToken: string; refreshToken: string; user: { id: string; displayName: string; email: string } }
-interface RemoteProject { id: string; name: string; slug: string; entryPageId: string | null; status: ProjectState["status"]; publishedReleaseId?: string | null; updatedAt?: string }
+interface RemoteProject { id: string; publicId?: string; name: string; slug: string; kit: ProductKit; legacyFullAccessUntil?: string; entryPageId: string | null; status: ProjectState["status"]; publishedReleaseId?: string | null; updatedAt?: string }
 interface RemotePage { id: string; title: string; slug: string; revision: number; updatedAt?: string; document: { blocks: BuilderBlock[] } }
 
 export async function registerAccount(input: { displayName: string; email: string; password: string }): Promise<Session> { const response = await request<{ data: Session }>("/v1/auth/register", { method: "POST", body: JSON.stringify(input) }, false); setSession(response.data); return response.data; }
@@ -21,7 +22,7 @@ export async function ensureRemoteProject(local: ProjectState): Promise<ProjectS
 
 export async function createRemoteProject(local: ProjectState): Promise<ProjectState> {
   const slug = `project-${crypto.randomUUID().slice(0, 8)}`;
-  const project = (await request<{ data: RemoteProject }>("/v1/projects", { method: "POST", body: JSON.stringify({ name: local.name, slug }) })).data;
+  const project = (await request<{ data: RemoteProject }>("/v1/projects", { method: "POST", body: JSON.stringify({ name: local.name, slug, kit: local.kit ?? "bot" }) })).data;
   const pages = (await request<{ data: RemotePage[] }>(`/v1/projects/${project.id}/pages`)).data;
   const entry = pages[0]!;
   const first = local.pages[0];
@@ -64,7 +65,7 @@ export async function promoteLocalPreview(local: ProjectState, flow: BotFlowDocu
   if (!target) {
     if (owned.length >= entitlement.maxProjects) throw new Error("Лимит облачных проектов занят. Бесплатный черновик сохранён на устройстве; для нового облачного проекта нужен подходящий тариф.");
     try {
-      target = (await request<{ data: RemoteProject }>("/v1/projects", { method: "POST", body: JSON.stringify({ name: local.name, slug }) })).data;
+      target = (await request<{ data: RemoteProject }>("/v1/projects", { method: "POST", body: JSON.stringify({ name: local.name, slug, kit: local.kit ?? "bot" }) })).data;
     } catch (reason) {
       // The server may have committed before the connection timed out.
       assertAccount();
@@ -128,6 +129,7 @@ export async function promoteLocalPreview(local: ProjectState, flow: BotFlowDocu
   await assertUnpublishedTarget();
   await saveRemoteFlow(projectId, flow, remoteFlow.revision);
   assertAccount();
+  await updateRemoteProjectKit(projectId, local.kit ?? "bot");
   await renameRemoteProject(projectId, local.name);
   const { storageMode: _previewMode, ...cloud } = local;
   return { ...cloud, id: projectId, status: "draft", plan: entitlement.planCode, pages: savedPages, activePageId: mappedIds.get(local.activePageId ?? "") ?? savedPages[0]?.id, updatedAt: new Date().toISOString() };
@@ -142,11 +144,12 @@ export async function loadRemoteProject(projectId: string, plan: ProjectState["p
   ]);
   const publishedAt = project.data.updatedAt === undefined ? 0 : Date.parse(project.data.updatedAt);
   const hasPendingChanges = project.data.publishedReleaseId != null && pages.data.some((page) => page.updatedAt !== undefined && Date.parse(page.updatedAt) > publishedAt);
-  return { id: project.data.id, name: project.data.name, status: project.data.status, plan: entitlement.planCode, updatedAt: project.data.updatedAt, hasPendingChanges, botUsername: bot.data?.botUsername, miniAppUrl: bot.data?.miniAppUrl, botStatus: bot.data?.status, activePageId: pages.data[0]?.id, pages: pages.data.map((page) => ({ id: page.id, title: page.title, slug: page.slug, blocks: page.document.blocks, remoteRevision: page.revision })) };
+  return { id: project.data.id, name: project.data.name, kit: project.data.kit, legacyFullAccessUntil: project.data.legacyFullAccessUntil, status: project.data.status, plan: entitlement.planCode, updatedAt: project.data.updatedAt, hasPendingChanges, botUsername: bot.data?.botUsername, miniAppUrl: project.data.kit === "site" && project.data.publicId ? `${location.origin}/s/${project.data.publicId}` : bot.data?.miniAppUrl, botStatus: bot.data?.status, activePageId: pages.data[0]?.id, pages: pages.data.map((page) => ({ id: page.id, title: page.title, slug: page.slug, blocks: page.document.blocks, remoteRevision: page.revision })) };
 }
 
 export async function listRemoteProjects(): Promise<RemoteProject[]> { return (await request<{ data: RemoteProject[] }>("/v1/projects")).data; }
 export async function renameRemoteProject(projectId: string, name: string): Promise<void> { await request(`/v1/projects/${projectId}`, { method: "PATCH", body: JSON.stringify({ name }) }); }
+export async function updateRemoteProjectKit(projectId: string, kit: ProductKit): Promise<void> { await request(`/v1/projects/${projectId}`, { method: "PATCH", body: JSON.stringify({ kit }) }); }
 
 function documentFor(page: ProjectState["pages"][number]) { return { schemaVersion: 1, metadata: { title: page.title }, settings: { maxWidth: "normal", respectTelegramTheme: true }, blocks: page.blocks }; }
 async function updateRemotePage(projectId: string, page: ProjectState["pages"][number]): Promise<RemotePage> {
@@ -192,8 +195,8 @@ export async function createPreview(projectId: string): Promise<string> {
 
 export async function fetchLeads(projectId: string): Promise<Lead[]> { return (await request<{ data: Lead[] }>(`/v1/projects/${projectId}/submissions`)).data; }
 export async function validateBot(projectId: string, botToken: string) { return (await request<{ data: { botId: string; firstName: string; username?: string } }>("/v1/bot-connections/validate", { method: "POST", body: JSON.stringify({ projectId, botToken }) })).data; }
-export async function createCheckout(planCode: "solo" | "trio") { return (await request<{ data: { checkoutId: string; status: string; confirmationUrl?: string } }>("/v1/billing/checkouts", { method: "POST", body: JSON.stringify({ planCode, clientRequestId: crypto.randomUUID() }) })).data; }
-export async function getEntitlement() { return (await request<{ data: { planCode: "free" | "solo" | "trio"; maxProjects: number; maxActiveBots: number; canPublish: boolean; validUntil?: string } }>("/v1/billing/entitlement")).data; }
+export async function createCheckout(planCode: PaidBillingPlanCode) { return (await request<{ data: { checkoutId: string; status: string; confirmationUrl?: string } }>("/v1/billing/checkouts", { method: "POST", body: JSON.stringify({ planCode, clientRequestId: crypto.randomUUID() }) })).data; }
+export async function getEntitlement() { return (await request<{ data: { planCode: BillingPlanCode; maxProjects: number; maxActiveBots: number; canPublish: boolean; supportedKits?: ProductKit[]; validUntil?: string } }>("/v1/billing/entitlement")).data; }
 export async function activateBot(projectId: string, botToken: string) { return (await request<{ data: { botId: string; botUsername?: string; miniAppUrl: string; status: "active" } }>("/v1/bot-connections", { method: "POST", body: JSON.stringify({ projectId, botToken, menuButtonText: "Открыть приложение" }) })).data; }
 export async function publishProject(projectId: string) { return (await request<{ data: { project: { publicId: string }; release: { version: number } } }>(`/v1/projects/${projectId}/publish`, { method: "POST" })).data; }
 

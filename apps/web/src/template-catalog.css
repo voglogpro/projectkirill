@@ -18,13 +18,23 @@
 .tcatalog-filters button span { font-size: 11px; opacity: .8; }
 .tcatalog-results { color: #aaa7c7; font-size: 12px; margin: 15px 0 12px; }
 .tcatalog-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.tcard { min-width: 0; display: flex; flex-direction: column; border-radius: 17px; overflow: hidden; border: 1px solid #302d43; background: #12121f; transition: border-color .18s, box-shadow .18s; }
-.tcard:hover { border-color: #74629e; box-shadow: 0 9px 30px #0003; }
+.tcard { --card-accent: #bca4ff; --card-rgb: 156,118,255; min-width: 0; display: flex; flex-direction: column; border-radius: 17px; overflow: hidden; border: 1px solid #302d43; background: #12121f; transition: border-color .18s, box-shadow .18s; }
+.tcard--cyan { --card-accent: #78d6fc; --card-rgb: 67,191,240; }
+.tcard--mint { --card-accent: #85e2c3; --card-rgb: 76,208,159; }
+.tcard--amber { --card-accent: #f4cd89; --card-rgb: 230,176,83; }
+.tcard:hover { border-color: var(--card-accent); box-shadow: 0 9px 30px #0003; }
 .tcard-preview-button { position: relative; display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; overflow: hidden; }
-.tcard-visual { --card-accent: #b099ff; padding: 22px 18px 32px; height: 218px; background: radial-gradient(ellipse at 50% 10%, #6553ac66, transparent 80%), #1b182e; overflow: hidden; }
+.tcard-visual { padding: 6px 8px 34px; height: 230px; background: radial-gradient(ellipse at 50% 10%, #6553ac66, transparent 80%), #1b182e; overflow: hidden; }
 .tcard-visual--cyan { --card-accent: #67cefa; background: radial-gradient(ellipse at 50% 10%, #31759466, transparent 80%), #112532; }
 .tcard-visual--mint { --card-accent: #78dec2; background: radial-gradient(ellipse at 50% 10%, #28785f66, transparent 80%), #152b2d; }
 .tcard-visual--amber { --card-accent: #f3ca7d; background: radial-gradient(ellipse at 50% 10%, #98754455, transparent 80%), #292335; }
+.solution-art { display: block; width: 100%; height: 100%; color: var(--card-accent); overflow: visible; }
+.solution-art text { font-family: Onest, sans-serif; }
+.solution-art .art-title { fill: #f1eefc; font-size: 11px; font-weight: 650; }
+.solution-art .art-small { fill: #d0cce1; font-size: 9px; }
+.solution-art .art-caption { fill: currentColor; font-size: 8px; letter-spacing: .7px; font-weight: 600; }
+.solution-art .art-button { fill: #10131d; font-size: 9px; font-weight: 700; }
+.solution-art .art-symbol { fill: currentColor; font-size: 60px; font-weight: 700; }
 .tcard-chat { max-width: 245px; margin: 0 auto; background: #121421; border: 1px solid #ffffff20; border-radius: 12px; padding: 10px; box-shadow: 0 12px 28px #0004; }
 .tcard-chat-head { display: flex; align-items: center; gap: 6px; font-size: 10px; padding-bottom: 9px; }
 .tcard-chat-head > span { display: grid; place-items: center; height: 22px; width: 22px; border-radius: 7px; background: #ffffff10; color: var(--card-accent); }
@@ -36,10 +46,19 @@
 .tcard-preview-hint { position: absolute; display: inline-flex; align-items: center; gap: 5px; bottom: 10px; left: 12px; padding: 5px 8px; background: #111321ed; color: #e2dafd; border: 1px solid #ffffff1a; border-radius: 7px; font-size: 10px; }
 .tcard-content { display: flex; flex: 1; flex-direction: column; padding: 16px; min-width: 0; }
 .tcard-format { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #aaa7c7; }
+.tcard-format > span { margin-left: auto; font-size: 10px; color: var(--card-accent); }
 .tcard-content h3 { font-family: Onest, sans-serif; font-size: 19px; line-height: 1.25; letter-spacing: -.025em; margin: 10px 0 8px; overflow-wrap: anywhere; }
 .tcard-content > p { font-size: 12px; line-height: 1.55; color: #b2afca; margin: 0 0 13px; }
+.tcard-content > .tcard-outcome { padding: 9px 10px; border-left: 2px solid var(--card-accent); color: var(--card-accent); background: rgba(var(--card-rgb),.07); font-size: 12px; font-weight: 600; border-radius: 0 7px 7px 0; }
 .tcard-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-bottom: 16px; }
 .tcard-tags span { color: #c7c2df; background: #211e35; font-size: 10px; padding: 4px 6px; border-radius: 5px; }
+.tcard-setup { border-top: 1px solid #ffffff0d; margin-bottom: 12px; }
+.tcard-setup summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 6px; list-style: none; color: #bfbad6; font-size: 11px; cursor: pointer; }
+.tcard-setup summary::-webkit-details-marker { display: none; }
+.tcard-setup summary::after { content: "+"; color: var(--card-accent); font-size: 18px; }
+.tcard-setup[open] summary::after { content: "−"; }
+.tcard-setup summary:focus-visible { outline: 2px solid var(--card-accent); outline-offset: 2px; border-radius: 3px; }
+.tcard-setup ul { padding-left: 15px; margin: 0 0 10px; color: #aaa7c7; font-size: 11px; line-height: 1.6; }
 .tcard-actions { display: flex; flex-direction: column; gap: 7px; }
 .tcard-actions button { display: flex; justify-content: center; align-items: center; gap: 5px; min-height: 42px; border-radius: 9px; padding: 9px 6px; font: inherit; font-size: 12px; font-weight: 600; }
 .tcard-look { color: #e5defb; background: transparent; border: 1px solid #423959; }
@@ -72,7 +91,11 @@
   .tcatalog-search { max-width: none; }
   .tcatalog-filters { gap: 6px; }
   .tcatalog-filters button { font-size: 11px; padding: 8px; gap: 5px; }
-  .tcard-visual { height: 190px; padding: 14px 9px 30px; }
+  .tcard-visual { height: 154px; padding: 0 3px 28px; }
+  .tcard-format { flex-wrap: wrap; }
+  .tcard-format > span { margin-left: 0; }
+  .tcard-content > .tcard-outcome { font-size: 11px; padding: 7px; }
+  .tcard-setup summary { font-size: 10px; }
   .tcard-content { padding: 12px 10px; }
   .tcard-content h3 { font-size: 16px; }
   .tcard-content > p { font-size: 12px; }

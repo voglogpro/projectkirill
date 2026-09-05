@@ -4,6 +4,7 @@ import type { PostgresBotFlowRepository } from "../db/postgres-bot-flow-reposito
 import type { AccessTokenService } from "../auth/tokens.js";
 import { botFlowDocumentSchema, createEmptyBotFlow } from "../domain/bot-flow.js";
 import { requireAccess, sendHttpError } from "./http-utils.js";
+import type { CoreEntitlementGate } from "../application/core-service.js";
 
 const params = z.object({ projectId: z.uuid() });
 const saveBody = z.object({ expectedRevision: z.number().int().positive(), document: botFlowDocumentSchema }).strict();
@@ -12,6 +13,7 @@ export async function registerBotFlowRoutes(
   app: FastifyInstance,
   flows: PostgresBotFlowRepository,
   accessTokens: AccessTokenService,
+  entitlements?: CoreEntitlementGate,
 ): Promise<void> {
   app.get("/v1/projects/:projectId/flow", async (request, reply) => {
     try {
@@ -44,6 +46,7 @@ export async function registerBotFlowRoutes(
     try {
       const claims = requireAccess(request, accessTokens);
       const { projectId } = params.parse(request.params);
+      await entitlements?.assertCanPublish(claims.sub, projectId);
       return await reply.send({ data: await flows.publish(claims.sub, projectId) });
     } catch (error) {
       const handled = await sendHttpError(error, reply);

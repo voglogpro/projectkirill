@@ -4,10 +4,11 @@ import type { CoreRepository } from "../application/core-service.js";
 import type { PageRecord, ProjectRecord, ProjectSnapshot, PublicAppManifest } from "../domain/core.js";
 import { pageDocumentSchema, type PageDocument } from "../domain/page-document.js";
 import { ConflictError } from "../domain/errors.js";
+import type { ProductKit } from "../domain/product-kit.js";
 
 interface ProjectRow {
   id: string; public_id: string; name: string; slug: string; status: ProjectRecord["status"];
-  entry_page_id: string | null; published_release_id: string | null; updated_at: Date;
+  entry_page_id: string | null; published_release_id: string | null; updated_at: Date; kit: ProductKit; legacy_full_access_until: Date | null;
 }
 interface PageRow {
   id: string; project_id: string; slug: string; title: string; draft_document: unknown; draft_revision: number; updated_at: Date;
@@ -17,13 +18,13 @@ interface PostgresError { code?: string }
 export class PostgresCoreRepository implements CoreRepository {
   public constructor(private readonly sql: Sql) {}
 
-  public async createProject(ownerUserId: string, input: { name: string; slug: string; entryDocument: PageDocument }): Promise<ProjectRecord> {
+  public async createProject(ownerUserId: string, input: { name: string; slug: string; kit?: ProductKit; entryDocument: PageDocument }): Promise<ProjectRecord> {
     try {
       return await this.sql.begin(async (transaction) => {
         const projects = await transaction<ProjectRow[]>`
-          INSERT INTO projects (owner_user_id, name, slug)
-          VALUES (${ownerUserId}, ${input.name}, ${input.slug})
-          RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+          INSERT INTO projects (owner_user_id, name, slug, kit)
+          VALUES (${ownerUserId}, ${input.name}, ${input.slug}, ${input.kit ?? "bot"})
+          RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
         `;
         const project = required(projects[0], "Project insert returned no row");
         const pages = await transaction<{ id: string }[]>`
@@ -34,7 +35,7 @@ export class PostgresCoreRepository implements CoreRepository {
         const entryPageId = required(pages[0], "Entry page insert returned no row").id;
         const updated = await transaction<ProjectRow[]>`
           UPDATE projects SET entry_page_id = ${entryPageId} WHERE id = ${project.id}
-          RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+          RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
         `;
         return mapProject(required(updated[0], "Project update returned no row"));
       });
@@ -46,7 +47,7 @@ export class PostgresCoreRepository implements CoreRepository {
 
   public async listProjects(ownerUserId: string): Promise<ProjectRecord[]> {
     const rows = await this.sql<ProjectRow[]>`
-      SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+      SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
       FROM projects WHERE owner_user_id = ${ownerUserId} ORDER BY updated_at DESC
     `;
     return rows.map(mapProject);
@@ -54,17 +55,19 @@ export class PostgresCoreRepository implements CoreRepository {
 
   public async getOwnedProject(ownerUserId: string, projectId: string): Promise<ProjectRecord | null> {
     const rows = await this.sql<ProjectRow[]>`
-      SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+      SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
       FROM projects WHERE id = ${projectId} AND owner_user_id = ${ownerUserId} LIMIT 1
     `;
     return rows[0] === undefined ? null : mapProject(rows[0]);
   }
 
-  public async updateProject(ownerUserId: string, projectId: string, name: string): Promise<ProjectRecord | null> {
+  public async updateProject(ownerUserId: string, projectId: string, name?: string, kit?: ProductKit): Promise<ProjectRecord | null> {
     const rows = await this.sql<ProjectRow[]>`
-      UPDATE projects SET name = ${name}
+      UPDATE projects SET name = COALESCE(${name ?? null}, name), kit = COALESCE(${kit ?? null}, kit),
+        legacy_full_access_until = CASE WHEN ${kit ?? null}::text IS NOT NULL AND kit <> ${kit ?? null}
+          THEN NULL ELSE legacy_full_access_until END
       WHERE id = ${projectId} AND owner_user_id = ${ownerUserId}
-      RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+      RETURNING id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
     `;
     return rows[0] === undefined ? null : mapProject(rows[0]);
   }
@@ -133,7 +136,7 @@ export class PostgresCoreRepository implements CoreRepository {
   public async publishSnapshot(ownerUserId: string, snapshot: ProjectSnapshot, contentHash: string): Promise<PublicAppManifest | "revision_conflict"> {
     return await this.sql.begin(async (transaction) => {
       const projectRows = await transaction<ProjectRow[]>`
-        SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at
+        SELECT id, public_id, name, slug, status, entry_page_id, published_release_id, updated_at, kit, legacy_full_access_until
         FROM projects WHERE id = ${snapshot.project.id} AND owner_user_id = ${ownerUserId} FOR UPDATE
       `;
       const project = projectRows[0];
@@ -194,7 +197,7 @@ export class PostgresCoreRepository implements CoreRepository {
     return rows[0] !== undefined;
   }
 
-  public async getPublicApp(publicId: string): Promise<PublicAppManifest | null> {
+  public async getPublicApp(publicId: string, surface: "miniapp" | "site" = "miniapp"): Promise<PublicAppManifest | null> {
     const rows = await this.sql<Array<{
       public_id: string; project_name: string; entry_page_id: string; release_id: string; release_version: number;
       release_hash: string; published_at: Date; page_id: string; page_slug: string; page_title: string; document: unknown;
@@ -209,6 +212,9 @@ export class PostgresCoreRepository implements CoreRepository {
       JOIN pages pg ON pg.id = rp.page_id AND pg.project_id = p.id
       JOIN page_versions pv ON pv.id = rp.page_version_id AND pv.page_id = pg.id
       WHERE p.public_id = ${publicId} AND p.status = 'active'
+        AND project_launch_allowed(p.id)
+        AND ((${surface} = 'miniapp' AND p.kit IN ('bot-app', 'bot-app-site'))
+          OR (${surface} = 'site' AND p.kit IN ('site', 'bot-app-site')))
       ORDER BY rp.position
     `;
     return mapManifest(rows);
@@ -216,7 +222,7 @@ export class PostgresCoreRepository implements CoreRepository {
 
   public async getPreviewApp(tokenHash: string): Promise<ProjectSnapshot | null> {
     const projects = await this.sql<ProjectRow[]>`
-      SELECT p.id, p.public_id, p.name, p.slug, p.status, p.entry_page_id, p.published_release_id, p.updated_at
+      SELECT p.id, p.public_id, p.name, p.slug, p.status, p.entry_page_id, p.published_release_id, p.updated_at, p.kit, p.legacy_full_access_until
       FROM preview_grants g JOIN projects p ON p.id = g.project_id
       WHERE g.token_hash = ${tokenHash} AND g.revoked_at IS NULL AND g.expires_at > now() LIMIT 1
     `;
@@ -232,7 +238,8 @@ export class PostgresCoreRepository implements CoreRepository {
 
 function mapProject(row: ProjectRow): ProjectRecord {
   return {
-    id: row.id, publicId: row.public_id, name: row.name, slug: row.slug, status: row.status,
+    id: row.id, publicId: row.public_id, name: row.name, slug: row.slug, status: row.status, kit: row.kit,
+    ...(row.legacy_full_access_until ? { legacyFullAccessUntil: row.legacy_full_access_until.toISOString() } : {}),
     entryPageId: row.entry_page_id, publishedReleaseId: row.published_release_id, updatedAt: row.updated_at.toISOString(),
   };
 }

@@ -44,9 +44,10 @@ export interface ProjectState {
   botUsername?: string;
   miniAppUrl?: string;
   botStatus?: BotConnectionStatus;
-  plan: "free" | "solo" | "trio";
+  plan: "free" | "solo" | "trio" | "studio";
   templateId?: TemplateId;
   kit?: ProductKit;
+  legacyFullAccessUntil?: string;
   updatedAt?: string;
   previewed?: boolean;
   hasPendingChanges?: boolean;

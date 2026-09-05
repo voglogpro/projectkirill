@@ -25,6 +25,7 @@ interface TelegramUser {
 export interface TelegramApi {
   getMe(token: string): Promise<TelegramBotIdentity>;
   setChatMenuButton(token: string, text: string, url: string): Promise<void>;
+  clearChatMenuButton?(token: string): Promise<void>;
   setWebhook(token: string, options: TelegramWebhookOptions): Promise<void>;
   sendMessage(token: string, options: TelegramSendMessageOptions): Promise<{ messageId: number }>;
   /** Clears the spinner Telegram shows on a pressed inline button. */
@@ -89,6 +90,10 @@ export class TelegramBotApiClient implements TelegramApi {
       allowed_updates: [...(options.allowedUpdates ?? ["message", "callback_query"])],
       drop_pending_updates: options.dropPendingUpdates ?? false,
     });
+  }
+
+  public async clearChatMenuButton(token: string): Promise<void> {
+    await this.call<true>(token, "setChatMenuButton", { menu_button: { type: "commands" } });
   }
 
   public async sendMessage(token: string, options: TelegramSendMessageOptions): Promise<{ messageId: number }> {

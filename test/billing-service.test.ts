@@ -15,7 +15,7 @@ class MemoryBillingRepository implements BillingRepository {
 
   public async getOrCreateCheckout(input: {
     userId: string;
-    planCode: "solo" | "trio";
+    planCode: "solo" | "trio" | "studio";
     amountMinor: number;
     currency: "RUB";
     clientRequestId: string;
@@ -120,6 +120,17 @@ function fixture() {
 }
 
 describe("BillingService", () => {
+  it("creates the distinct full-stack plan at 650 rubles without trusting a browser price", async () => {
+    const { service, provider, repository } = fixture();
+    const result = await service.createCheckout(randomUUID(), { planCode: "studio", clientRequestId: randomUUID() });
+    expect(result.status).toBe("pending");
+    expect(provider.createPayment).toHaveBeenCalledWith(expect.objectContaining({
+      amountMinor: 65_000, metadata: expect.objectContaining({ planCode: "studio" }),
+    }));
+    expect([...repository.checkouts.values()][0]?.planCode).toBe("studio");
+    await expect(service.createCheckout(randomUUID(), { planCode: "studio", clientRequestId: randomUUID(), amountMinor: 1 })).rejects.toThrow();
+  });
+
   it("returns free or paid server-side entitlements", async () => {
     const { service, repository } = fixture();
     await expect(service.getEntitlement(randomUUID())).resolves.toMatchObject({

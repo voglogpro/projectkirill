@@ -9,6 +9,7 @@ export class PostgresFormSubmissionRepository implements FormSubmissionRepositor
       FROM projects p JOIN bot_integrations bi ON bi.project_id = p.id
       JOIN billing_subscriptions bs ON bs.user_id = p.owner_user_id AND bs.status = 'active' AND bs.current_period_end > now()
       WHERE p.public_id = ${publicId} AND p.status = 'active' AND bi.status = 'active'
+        AND p.kit IN ('bot-app', 'bot-app-site') AND project_launch_allowed(p.id)
       LIMIT 1
     `;
     const row = rows[0]; return row === undefined ? null : { projectId: row.project_id, encryptedToken: row.encrypted_token };

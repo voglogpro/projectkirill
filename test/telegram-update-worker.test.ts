@@ -47,6 +47,14 @@ function fixture(job: TelegramUpdateJob | null = makeJob()) {
 }
 
 describe("TelegramUpdateWorker", () => {
+  it("uses a text-only fallback without an app link before a scenario is published", async () => {
+    const { worker, telegram } = fixture(makeJob({ miniAppEnabled: false }));
+    await expect(worker.runOnce()).resolves.toBe("processed");
+    const [, options] = telegram.sendMessage.mock.calls[0] ?? [];
+    expect(options.webAppButton).toBeUndefined();
+    expect(options.text).toContain("Бот готов");
+  });
+
   it("decrypts the active integration token and answers /start with the Mini App button", async () => {
     const { worker, repository, tokenVault, telegram, job } = fixture();
 

@@ -7,13 +7,20 @@
 export function createBackend(notify) {
   const STORAGE_KEY = "tma-studio-preview-state-v1";
   const PLANS = [
-    { code: "free", name: "Бесплатный", monthlyPriceMinor: 0, currency: "RUB", maxProjects: 1, maxActiveBots: 0 },
-    { code: "solo", name: "Один бот", monthlyPriceMinor: 35000, currency: "RUB", maxProjects: 1, maxActiveBots: 1 },
-    { code: "trio", name: "Три бота", monthlyPriceMinor: 65000, currency: "RUB", maxProjects: 3, maxActiveBots: 3 },
+    { code: "free", name: "Бесплатный", monthlyPriceMinor: 0, currency: "RUB", maxProjects: 1, maxActiveBots: 0, supportedKits: [] },
+    { code: "solo", name: "Один текстовый бот", monthlyPriceMinor: 35000, currency: "RUB", maxProjects: 1, maxActiveBots: 1, supportedKits: ["bot", "site"] },
+    { code: "trio", name: "Три текстовых бота", monthlyPriceMinor: 65000, currency: "RUB", maxProjects: 3, maxActiveBots: 3, supportedKits: ["bot"] },
+    { code: "studio", name: "Студия", monthlyPriceMinor: 65000, currency: "RUB", maxProjects: 1, maxActiveBots: 1, supportedKits: ["bot", "bot-app", "bot-app-site", "site"] },
   ];
   const ORIGIN = "https://apps.tmastudio.ru";
 
   const state = load() ?? seed();
+  for (const project of state.projects) {
+    if (project.kit === undefined) {
+      project.kit = "bot-app-site";
+      project.legacyFullAccessUntil = state.entitlements[project.ownerId]?.validUntil;
+    }
+  }
   save();
 
   function seed() {
@@ -48,7 +55,11 @@ export function createBackend(notify) {
     const granted = state.entitlements[userId];
     const active = granted !== undefined && Date.parse(granted.validUntil) > Date.now();
     const plan = PLANS.find((item) => item.code === (active ? granted.planCode : "free"));
-    return { planCode: plan.code, maxProjects: plan.maxProjects, maxActiveBots: plan.maxActiveBots, canPublish: plan.maxActiveBots > 0, ...(active ? { validUntil: granted.validUntil } : {}) };
+    return { planCode: plan.code, maxProjects: plan.maxProjects, maxActiveBots: plan.maxActiveBots, supportedKits: plan.supportedKits, canPublish: plan.maxActiveBots > 0, ...(active ? { validUntil: granted.validUntil } : {}) };
+  }
+  function canLaunch(project) {
+    const entitlement = entitlementFor(project.ownerId);
+    return entitlement.canPublish && (entitlement.supportedKits.includes(project.kit) || Date.parse(project.legacyFullAccessUntil ?? "") > Date.now());
   }
   function projectFor(user, projectId) { return state.projects.find((item) => item.id === projectId && item.ownerId === user.id); }
   function publicProject(project) {
@@ -56,7 +67,7 @@ export function createBackend(notify) {
     // own pages, matching the production ProjectRecord without a data migration.
     const entry = state.pages.find((page) => page.projectId === project.id && page.id === project.entryPageId)
       ?? state.pages.find((page) => page.projectId === project.id);
-    return { id: project.id, publicId: project.publicId, name: project.name, slug: project.slug, entryPageId: entry?.id ?? null, status: project.status, publishedReleaseId: project.publishedReleaseId ?? null, updatedAt: project.updatedAt };
+    return { id: project.id, publicId: project.publicId, name: project.name, slug: project.slug, kit: project.kit, legacyFullAccessUntil: project.legacyFullAccessUntil, entryPageId: entry?.id ?? null, status: project.status, publishedReleaseId: project.publishedReleaseId ?? null, updatedAt: project.updatedAt };
   }
   function pageBody(page) { return { id: page.id, projectId: page.projectId, slug: page.slug, title: page.title, document: page.document, revision: page.revision, updatedAt: page.updatedAt }; }
   function emptyDocument(title) { return { schemaVersion: 1, metadata: { title }, settings: { maxWidth: "normal", respectTelegramTheme: true }, blocks: [] }; }
@@ -117,6 +128,9 @@ export function createBackend(notify) {
       const [, publicId, tail] = path.match(/^\/v1\/public\/apps\/([^/]+)(\/forms)?$/) ?? [];
       const project = state.projects.find((item) => item.publicId === publicId);
       if (project === undefined) return fail(404, "NOT_FOUND", "Приложение не найдено");
+      if (!canLaunch(project) || project.kit === "bot") return fail(404, "NOT_FOUND", "Приложение недоступно на текущем тарифе");
+      const surface = url.searchParams.get("surface") === "site" ? "site" : "miniapp";
+      if (surface === "site" ? !["site", "bot-app-site"].includes(project.kit) : !["bot-app", "bot-app-site"].includes(project.kit)) return fail(404, "NOT_FOUND", "Этот формат не опубликован");
       if (tail === "/forms" && method === "POST") {
         const page = state.pages.find((item) => item.id === payload.pageId) ?? state.pages.find((item) => item.projectId === project.id);
         state.submissions.push({ id: uuid(), projectId: project.id, pageId: payload.pageId, pageTitle: page?.title ?? "Главная", formKey: String(payload.formKey ?? "form"), telegramUserId: "570123456", values: payload.values ?? {}, createdAt: now() });
@@ -150,7 +164,7 @@ export function createBackend(notify) {
       const owned = state.projects.filter((item) => item.ownerId === user.id);
       if (owned.length >= limit) return fail(403, "PLAN_LIMIT_REACHED", `Текущий тариф разрешает ${limit} проект(а)`);
       const entryPageId = uuid();
-      const project = { id: uuid(), ownerId: user.id, name: String(payload.name ?? "Новый проект"), slug: String(payload.slug ?? `project-${Date.now()}`), publicId: `app${Math.random().toString(36).slice(2, 10)}`, entryPageId, status: "draft", publishedReleaseId: null, updatedAt: now() };
+      const project = { id: uuid(), ownerId: user.id, name: String(payload.name ?? "Новый проект"), kit: payload.kit ?? "bot", slug: String(payload.slug ?? `project-${Date.now()}`), publicId: `app${Math.random().toString(36).slice(2, 10)}`, entryPageId, status: "draft", publishedReleaseId: null, updatedAt: now() };
       state.projects.push(project);
       state.pages.push({ id: entryPageId, projectId: project.id, slug: "home", title: "Главная", document: emptyDocument("Главная"), revision: 1, updatedAt: now() });
       changed();
@@ -165,7 +179,11 @@ export function createBackend(notify) {
       const pages = () => state.pages.filter((item) => item.projectId === project.id);
 
       if (section === undefined && method === "GET") return ok(publicProject(project));
-      if (section === undefined && method === "PATCH") { project.name = String(payload.name ?? project.name); project.updatedAt = now(); changed(); return ok(publicProject(project)); }
+      if (section === undefined && method === "PATCH") {
+        project.name = String(payload.name ?? project.name);
+        if (payload.kit !== undefined && payload.kit !== project.kit) { project.kit = payload.kit; project.legacyFullAccessUntil = undefined; }
+        project.updatedAt = now(); changed(); return ok(publicProject(project));
+      }
       if (section === "pages" && method === "GET") return ok(pages().map(pageBody));
       if (section === "pages" && method === "POST") {
         const page = { id: uuid(), projectId: project.id, slug: String(payload.slug ?? `page-${Date.now()}`), title: String(payload.title ?? "Страница"), document: payload.document ?? emptyDocument("Страница"), revision: 1, updatedAt: now() };
@@ -199,6 +217,7 @@ export function createBackend(notify) {
         return ok(flowBody(project.id));
       }
       if (section === "flow" && pageId === "publish" && method === "POST") {
+        if (!canLaunch(project)) return fail(403, "PLAN_LIMIT_REACHED", "Выберите тариф для формата проекта");
         const flow = state.flows[project.id];
         if (flow === undefined) return fail(404, "NOT_FOUND", "Сценарий не найден");
         flow.versions.push(JSON.parse(JSON.stringify(flow.document)));
@@ -208,7 +227,7 @@ export function createBackend(notify) {
       if (section === "preview-grants" && method === "POST") return ok({ token: `preview-${uuid()}`, expiresAt: new Date(Date.now() + 3600_000).toISOString() });
       if (section === "submissions" && method === "GET") return ok(state.submissions.filter((item) => item.projectId === project.id).slice(-500).reverse().map((item) => ({ id: item.id, formKey: item.formKey, pageTitle: item.pageTitle, telegramUserId: item.telegramUserId, values: item.values, createdAt: item.createdAt })));
       if (section === "publish" && method === "POST") {
-        if (!entitlementFor(user.id).canPublish) return fail(403, "PLAN_LIMIT_REACHED", "Для публикации приложения требуется активный платный тариф");
+        if (!canLaunch(project)) return fail(403, "PLAN_LIMIT_REACHED", "Для этого формата нужен подходящий платный тариф");
         const version = state.releases.filter((item) => item.projectId === project.id).length + 1;
         const release = { id: uuid(), projectId: project.id, version, createdAt: now(), pages: JSON.parse(JSON.stringify(pages())) };
         state.releases.push(release);
@@ -230,11 +249,11 @@ export function createBackend(notify) {
       const project = projectFor(user, String(payload.projectId ?? ""));
       if (project === undefined) return fail(404, "NOT_FOUND", "Проект не найден");
       const entitlement = entitlementFor(user.id);
-      if (entitlement.maxActiveBots === 0) return fail(403, "PLAN_LIMIT_REACHED", "Подключение бота доступно на платном тарифе");
+      if (!canLaunch(project)) return fail(403, "PLAN_LIMIT_REACHED", "Подключение доступно на подходящем платном тарифе");
       const parsed = parseToken(String(payload.botToken ?? ""));
       if (parsed === undefined) return fail(422, "INVALID_BOT_TOKEN", "Telegram не принял этот токен");
       if (state.bots.some((item) => item.botId === parsed.botId && item.projectId !== project.id)) return fail(409, "BOT_ALREADY_CONNECTED", "Этот бот уже подключён к другому проекту");
-      const bot = { projectId: project.id, botId: parsed.botId, username: parsed.username, firstName: parsed.firstName, status: "active", miniAppUrl: `${ORIGIN}/app/${project.publicId}`, menuButtonText: String(payload.menuButtonText ?? "Открыть приложение") };
+      const bot = { projectId: project.id, botId: parsed.botId, username: parsed.username, firstName: parsed.firstName, status: "active", miniAppUrl: project.kit === "bot" || project.kit === "site" ? "" : `${ORIGIN}/app/${project.publicId}`, menuButtonText: String(payload.menuButtonText ?? "Открыть приложение") };
       state.bots = [...state.bots.filter((item) => item.projectId !== project.id), bot];
       changed();
       return ok({ botId: bot.botId, botUsername: bot.username, miniAppUrl: bot.miniAppUrl, status: "active" });

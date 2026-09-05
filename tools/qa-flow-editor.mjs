@@ -150,12 +150,16 @@ try {
   let revision = 1;
   const writes = [];
   let published;
+  const cloudProject = { id: "11111111-1111-4111-8111-111111111111", name: "QA cloud bot", kit: "bot", status: "draft", plan: "free", pages: [] };
   await cloud.route("**/v1/**", async (route) => {
     const request = route.request();
+    const pathname = new URL(request.url()).pathname;
     if (request.url().endsWith("/flow/publish")) {
       published = remote;
       return route.fulfill({ json: { data: { version: 1 } } });
     }
+    if (pathname === `/v1/projects/${cloudProject.id}` && request.method() === "PATCH") return route.fulfill({ json: { data: cloudProject } });
+    if (pathname === "/v1/billing/entitlement") return route.fulfill({ json: { data: { planCode: "free", maxProjects: 1, maxActiveBots: 0, canPublish: false } } });
     if (!request.url().endsWith("/flow")) return route.fulfill({ status: 503, json: { error: { message: "Outside scenario test scope" } } });
     if (request.method() === "PUT") {
       const body = request.postDataJSON();
@@ -169,10 +173,11 @@ try {
   });
   const cloudPage = await cloud.newPage();
   cloudPage.on("pageerror", (error) => errors.push(error.message));
-  await cloudPage.addInitScript((flow) => {
+  await cloudPage.addInitScript(({ flow, project }) => {
     localStorage.setItem("tma-studio-flow-v1", JSON.stringify(flow));
+    localStorage.setItem("tma-studio-project-v2:qa", JSON.stringify(project));
     sessionStorage.setItem("tma-studio-session", JSON.stringify({ accessToken: "local-qa-only", refreshToken: "local-qa-only", user: { id: "qa", displayName: "QA", email: "qa@example.test" } }));
-  }, fixture);
+  }, { flow: fixture, project: cloudProject });
   await cloudPage.goto(`${base}/flow`);
   await cloudPage.locator(".flow-busy").waitFor({ state: "hidden" });
   await cloudPage.getByRole("textbox", { name: "Текст", exact: true }).fill("Первая правка");
@@ -183,9 +188,10 @@ try {
   assert.equal(writes.length, 2, "Revision responses must not start another autosave");
   await cloudPage.getByRole("textbox", { name: "Текст", exact: true }).fill("Сохранить перед запуском");
   await cloudPage.getByRole("button", { name: "Запустить", exact: true }).click();
-  await eventually(() => published !== undefined);
-  assert.equal(published.nodes.find((item) => item.id === ids.message).props.text, "Сохранить перед запуском");
-  console.log("PASS cloud mock: serial revisions, no autosave loop, flush before publishing");
+  await cloudPage.getByRole("dialog", { name: "Мастер запуска" }).waitFor();
+  assert.equal(remote.nodes.find((item) => item.id === ids.message).props.text, "Сохранить перед запуском");
+  assert.equal(published, undefined, "A free account must save its draft, not publish before the launch wizard");
+  console.log("PASS cloud mock: serial revisions, no autosave loop, latest draft flushed before wizard, no free publication");
   await cloud.close();
   assert.deepEqual(errors, [], "No browser runtime errors");
 } finally { await browser.close(); }

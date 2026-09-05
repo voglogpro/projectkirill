@@ -1,19 +1,24 @@
 import { Bot, Check, ChevronRight, Copy, ExternalLink, Lock, Rocket, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { activateBot, createCheckout, getEntitlement, loadRemoteFlow, publishProject, publishRemoteFlow, validateBot } from "../api";
+import { kitName, planFitsKit, requiresMiniApp, suggestedPlan, type PaidBillingPlanCode } from "../pricing";
+import type { ProductKit } from "../types";
+import "../pricing.css";
 
-type Plan = "solo" | "trio";
+type Plan = PaidBillingPlanCode;
 
-export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onClose, onLaunched }: { projectId: string; initialPlan?: Plan; existingBot?: { username: string; miniAppUrl?: string }; onClose: () => void; onLaunched: (result: { plan: Plan; botUsername?: string; miniAppUrl: string }) => void }) {
+export function LaunchModal({ projectId, projectKit = "bot", legacyFullAccessUntil, initialPlan, existingBot, onClose, onLaunched }: { projectId: string; projectKit?: ProductKit; legacyFullAccessUntil?: string; initialPlan?: Plan; existingBot?: { username: string; miniAppUrl?: string }; onClose: () => void; onLaunched: (result: { plan: Plan; botUsername?: string; miniAppUrl: string }) => void }) {
   const [step, setStep] = useState(existingBot ? 2 : 1);
   const [token, setToken] = useState("");
-  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [plan, setPlan] = useState<Plan>(() => initialPlan && planFitsKit(initialPlan, projectKit) ? initialPlan : suggestedPlan(projectKit));
   const [bot, setBot] = useState<{ firstName: string; username?: string } | undefined>(existingBot ? { firstName: existingBot.username, username: existingBot.username } : undefined);
   const [launchUrl, setLaunchUrl] = useState<string | undefined>(existingBot?.miniAppUrl);
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string>();
+  const [reconfigure, setReconfigure] = useState(false);
+  const canUse = (entitlement: Awaited<ReturnType<typeof getEntitlement>>) => entitlement.canPublish && (planFitsKit(entitlement.planCode, projectKit) || Boolean(legacyFullAccessUntil && Date.parse(legacyFullAccessUntil) > Date.now()));
 
   useEffect(() => { const overflow = document.body.style.overflow; const close = (event: KeyboardEvent) => { if (event.key === "Escape" && !pending) onClose(); }; document.body.style.overflow = "hidden"; addEventListener("keydown", close); return () => { document.body.style.overflow = overflow; removeEventListener("keydown", close); }; }, [onClose, pending]);
   useEffect(() => { let channel: BroadcastChannel | undefined; try { channel = new BroadcastChannel("tma-studio-payment"); channel.onmessage = (event) => { if ((event.data as { type?: string })?.type === "payment-return") void checkPayment(); }; } catch { /* Manual payment check remains available. */ } return () => channel?.close(); }, []);
@@ -22,7 +27,7 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
     setPending(true); setError(undefined);
     try {
       const [found, entitlement] = await Promise.all([validateBot(projectId, token), getEntitlement()]);
-      setBot(found); if (entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(entitlement.canPublish ? 3 : 2);
+      setBot(found); if (canUse(entitlement) && entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(canUse(entitlement) ? 3 : 2);
     } catch (reason) { setError(messageFrom(reason, "Не удалось проверить бота")); }
     finally { setPending(false); }
   }
@@ -43,7 +48,7 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
         return;
       }
       paymentWindow?.close();
-      if (checkout.status === "succeeded") { setStep(3); return; }
+      if (checkout.status === "succeeded") { await checkPayment(); return; }
       setError("Платёж создан. После подтверждения оплаты вернитесь в этот мастер запуска.");
     } catch (reason) { paymentWindow?.close(); setError(messageFrom(reason, "Не удалось создать платёж")); }
     finally { setPending(false); }
@@ -51,7 +56,7 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
 
   async function checkPayment() {
     setPending(true); setError(undefined);
-    try { const entitlement = await getEntitlement(); if (entitlement.canPublish) { if (entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(3); } else setError("Платёж ещё не подтверждён. Подождите несколько секунд и проверьте снова."); }
+    try { const entitlement = await getEntitlement(); if (canUse(entitlement)) { if (entitlement.planCode !== "free") setPlan(entitlement.planCode); setStep(3); } else setError("Оплата подходящего тарифа ещё не подтверждена. Для Mini App нужен тариф «Студия», а не пакет текстовых ботов."); }
     catch (reason) { setError(messageFrom(reason, "Не удалось проверить оплату")); }
     finally { setPending(false); }
   }
@@ -61,15 +66,15 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
   async function launch() {
     setPending(true); setError(undefined);
     try {
-      await publishProject(projectId);
+      const publication = await publishProject(projectId);
       // A promoted local preview has a saved draft but no published scenario yet.
       // Publish it before activation so the worker serves the selected template.
       await loadRemoteFlow(projectId); // Also materializes a draft for legacy page-only projects.
       await publishRemoteFlow(projectId);
-      if (existingBot) { const result = { plan, botUsername: existingBot.username, miniAppUrl: existingBot.miniAppUrl ?? "" }; setLaunchUrl(existingBot.miniAppUrl); onLaunched(result); setStep(4); return; }
+      if (existingBot && !reconfigure) { const result = { plan, botUsername: existingBot.username, miniAppUrl: projectKit === "site" ? `${location.origin}/s/${publication.project.publicId}` : existingBot.miniAppUrl ?? "" }; setLaunchUrl(result.miniAppUrl); onLaunched(result); setStep(4); return; }
       const connected = await activateBot(projectId, token);
-      const result = { plan, botUsername: connected.botUsername ?? bot?.username, miniAppUrl: connected.miniAppUrl };
-      setToken(""); setLaunchUrl(connected.miniAppUrl); onLaunched(result); setStep(4);
+      const result = { plan, botUsername: connected.botUsername ?? bot?.username, miniAppUrl: projectKit === "site" ? `${location.origin}/s/${publication.project.publicId}` : connected.miniAppUrl };
+      setToken(""); setLaunchUrl(result.miniAppUrl); onLaunched(result); setStep(4);
     } catch (reason) { setError(messageFrom(reason, "Не удалось запустить приложение")); }
     finally { setPending(false); }
   }
@@ -80,7 +85,7 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
 
     {step === 1 && <>
       <div className="modal-icon"><Bot /></div><h2 id="launch-title">Подключите Telegram-бота</h2>
-      <p>Создайте бота у @BotFather и вставьте полученный токен. Мы проверим его, а после оплаты безопасно сохраним и настроим Mini App.</p>
+      <p>Формат: {kitName[projectKit]}. Создайте бота у @BotFather и вставьте токен. Мы проверим его, безопасно сохраним и подключим после выбора подходящего тарифа.</p>
       <ol><li><span>1</span>Откройте <b>@BotFather</b> в Telegram <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" aria-label="Открыть BotFather"><ExternalLink /></a></li><li><span>2</span>Отправьте команду <b>/newbot</b><button onClick={() => void copyCommand()} aria-label="Скопировать команду /newbot"><Copy /></button></li><li><span>3</span>Скопируйте API-токен</li></ol>
       {copied && <div className="inline-success">Команда /newbot скопирована</div>}
       <label className="token-field"><span>Bot Token</span><input name="bot-token" type="password" autoComplete="off" value={token} onChange={(event) => setToken(event.target.value.trim())} placeholder="1234567890:AAH..." /><small><Lock />Токен будет зашифрован перед сохранением</small></label>
@@ -91,8 +96,13 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
     {step === 2 && <>
       <div className="modal-icon green"><Check /></div><h2>{existingBot ? "Бот уже подключён" : "Бот найден"}</h2><BotCard bot={bot} />
       <h3 className="choose-title">Выберите тариф</h3>
-      <PlanOption code="solo" current={plan} onSelect={setPlan} title="Один бот" subtitle="Для одного проекта" price="350 ₽" />
-      <PlanOption code="trio" current={plan} onSelect={setPlan} title="Три бота" subtitle="Для нескольких проектов" price="650 ₽" badge="Выгодно" />
+      <p>Вы запускаете: {kitName[projectKit]}. Редактирование и предпросмотр остаются бесплатными.</p>
+      {!requiresMiniApp(projectKit) && <PlanOption code="solo" current={plan} onSelect={setPlan} title={projectKit === "site" ? "Один сайт" : "Один текстовый бот"} subtitle="Один проект · без Mini App" price="350 ₽" />}
+      {projectKit === "bot" && <PlanOption code="trio" current={plan} onSelect={setPlan} title="Три текстовых бота" subtitle="До трёх ботов · Mini App не входит" price="650 ₽" />}
+      {requiresMiniApp(projectKit) && <PlanOption code="studio" current={plan} onSelect={setPlan} title="Студия" subtitle="Один бот + Mini App · сайт по желанию" price="650 ₽" />}
+      <p className="muted">Подписка действует на аккаунт. Смена тарифа не добавляет второй пакет к текущему; ограничения выбранного тарифа заменят прежние.</p>
+      {existingBot && <button className="outline-button modal-action" disabled={pending} onClick={() => void checkPayment()}>Проверить действующую подписку</button>}
+      {existingBot && <button className="back-link" onClick={() => { setReconfigure(true); setStep(1); }}>Обновить токен и кнопку меню</button>}
       {error && <div className="auth-error">{error}</div>}
       <button className="primary-button modal-action" disabled={pending} onClick={() => void pay()}>{pending ? "Создаём платёж…" : "Перейти к оплате"} <ChevronRight /></button>
       {!existingBot && <button className="back-link" onClick={() => setStep(1)}>Назад</button>}
@@ -100,17 +110,18 @@ export function LaunchModal({ projectId, initialPlan = "solo", existingBot, onCl
 
     {step === 3 && <>
       <div className="modal-icon info"><Rocket /></div><h2>Всё готово к запуску</h2><BotCard bot={bot} />
-      <p>{existingBot ? "Опубликуем текущую версию Mini App. Подключённый бот и его защищённые настройки останутся прежними." : "Опубликуем текущую версию, зашифруем токен, установим кнопку меню и защищённый webhook. Обычно это занимает несколько секунд."}</p>
+      <p>{projectKit === "bot" ? "Опубликуем текстовый сценарий и подключим защищённый webhook. Кнопка Mini App в этом формате не создаётся." : "Опубликуем страницы и сценарий, настроим защищённое подключение Telegram. Подключение бота и размещение входят в тариф."}</p>
       {error && <div className="auth-error">{error}</div>}
       <button className="primary-button modal-action" disabled={pending} onClick={() => void launch()}>{pending ? existingBot ? "Публикуем…" : "Настраиваем Telegram…" : existingBot ? "Опубликовать новую версию" : "Опубликовать и запустить"} <Rocket /></button>
       <button className="back-link" onClick={() => setStep(existingBot ? 2 : 1)}>{existingBot ? "Назад к тарифу" : "Проверить другой токен"}</button>
+      {existingBot && <button className="back-link" onClick={() => { setReconfigure(true); setStep(1); }}>Обновить подключение после смены формата</button>}
     </>}
 
     {step === 4 && <>
-      <div className="modal-icon green"><Check /></div><h2>Mini App запущен</h2>
-      <p>Кнопка меню и webhook настроены. Пользователи уже могут открыть приложение внутри Telegram.</p>
+      <div className="modal-icon green"><Check /></div><h2>{projectKit === "bot" ? "Бот запущен" : projectKit === "site" ? "Сайт опубликован" : "Mini App запущен"}</h2>
+      <p>{projectKit === "bot" ? "Сценарий опубликован. Откройте своего бота и отправьте /start." : "Проект опубликован. Проверьте путь клиента по ссылке ниже."}</p>
       {bot?.username && <a className="primary-button modal-action" href={`https://t.me/${bot.username}`} target="_blank" rel="noreferrer">Открыть @{bot.username} в Telegram <ChevronRight /></a>}
-      {launchUrl && <a className="outline-button modal-action" href={launchUrl} target="_blank" rel="noreferrer">Проверить Mini App в браузере</a>}
+      {launchUrl && projectKit !== "bot" && <a className="outline-button modal-action" href={projectKit === "site" ? launchUrl.replace("/app/", "/s/") : launchUrl} target="_blank" rel="noreferrer">{projectKit === "site" ? "Открыть сайт" : "Проверить Mini App в браузере"}</a>}
       <button className="back-link" onClick={onClose}>Перейти в кабинет</button>
     </>}
     {step === 5 && <><div className="modal-icon info"><Lock /></div><h2>Завершите оплату</h2><p>Страница оплаты открывается в новой вкладке. После подтверждения вернитесь сюда — токен останется только в этой защищённой сессии.</p>{error && <div className="auth-error">{error}</div>}{checkoutUrl && <a className="outline-button modal-action" href={checkoutUrl} target="_blank" rel="noreferrer">Открыть страницу оплаты <ExternalLink /></a>}<button className="primary-button modal-action" disabled={pending} onClick={() => void checkPayment()}>{pending ? "Проверяем…" : "Я оплатил — проверить"}<ChevronRight /></button><button className="back-link" onClick={() => setStep(2)}>Выбрать другой тариф</button></>}

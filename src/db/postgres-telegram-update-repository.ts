@@ -14,10 +14,11 @@ export class PostgresTelegramUpdateRepository implements TelegramUpdateRepositor
     const rows = await this.sql<
       { id: string; project_id: string; webhook_secret_hash: Uint8Array }[]
     >`
-      SELECT id, project_id, webhook_secret_hash
-      FROM bot_integrations
-      WHERE public_id = ${publicId}
-        AND status = 'active'
+      SELECT bi.id, bi.project_id, bi.webhook_secret_hash
+      FROM bot_integrations bi
+      WHERE bi.public_id = ${publicId}
+        AND bi.status = 'active'
+        AND project_launch_allowed(bi.project_id)
         AND webhook_secret_hash IS NOT NULL
       LIMIT 1
     `;

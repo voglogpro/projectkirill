@@ -102,7 +102,7 @@ export async function buildApp() {
   await registerCoreRoutes(app, coreService, accessTokens);
   await registerBillingRoutes(app, billingService, accessTokens);
   await registerBotRoutes(app, connectBotService, accessTokens);
-  await registerBotFlowRoutes(app, botFlows, accessTokens);
+  await registerBotFlowRoutes(app, botFlows, accessTokens, entitlements);
   await registerFormRoutes(app, formService, accessTokens);
   await registerTelegramWebhookRoutes(app, new TelegramWebhookService(new PostgresTelegramUpdateRepository(sql)));
 

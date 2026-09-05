@@ -1,11 +1,13 @@
 import { z } from "zod";
 import type { PageDocument } from "./page-document.js";
+import { productKitSchema, type ProductKit } from "./product-kit.js";
 
 export const createProjectSchema = z
-  .object({ name: z.string().trim().min(1).max(120), slug: z.string().trim().regex(/^[a-z][a-z0-9-]{1,62}[a-z0-9]$/) })
+  .object({ name: z.string().trim().min(1).max(120), slug: z.string().trim().regex(/^[a-z][a-z0-9-]{1,62}[a-z0-9]$/), kit: productKitSchema.default("bot") })
   .strict();
 
-export const updateProjectSchema = z.object({ name: z.string().trim().min(1).max(120) }).strict();
+export const updateProjectSchema = z.object({ name: z.string().trim().min(1).max(120).optional(), kit: productKitSchema.optional() }).strict()
+  .refine((input) => input.name !== undefined || input.kit !== undefined, "Supply name or kit");
 export const createPageSchema = z
   .object({ slug: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,62}$/), title: z.string().trim().min(1).max(200), document: z.unknown() })
   .strict();
@@ -15,6 +17,8 @@ export const updatePageSchema = z
 export const previewGrantSchema = z.object({ ttlSeconds: z.number().int().min(60).max(86_400).default(3_600) }).strict();
 
 export interface ProjectRecord {
+  kit?: ProductKit;
+  legacyFullAccessUntil?: string;
   id: string;
   publicId: string;
   name: string;

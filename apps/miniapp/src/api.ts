@@ -7,6 +7,7 @@ export async function loadManifest(publicId: string, previewToken?: string): Pro
   const url = previewToken
     ? new URL(`${API_URL}/preview/v1/${encodeURIComponent(previewToken)}`, location.origin)
     : new URL(`${API_URL}/v1/public/apps/${encodeURIComponent(publicId)}`, location.origin);
+  if (!previewToken && location.pathname.startsWith("/s/")) url.searchParams.set("surface", "site");
   const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8_000) });
   if (!response.ok) throw new Error(response.status === 404 ? "Приложение не найдено" : "Не удалось загрузить приложение");
   const body = await response.json() as { data: AppManifest | BackendManifest | PreviewManifest };
@@ -15,7 +16,8 @@ export async function loadManifest(publicId: string, previewToken?: string): Pro
 
 export async function submitForm(publicId: string, pageId: string, formKey: string, values: Record<string, string | boolean>): Promise<void> {
   if (publicId === "demo") { await new Promise((resolve) => setTimeout(resolve, 350)); return; }
-  const response = await fetch(`${API_URL}/v1/public/apps/${encodeURIComponent(publicId)}/forms`, {
+  const surface = location.pathname.startsWith("/s/") ? "?surface=site" : "";
+  const response = await fetch(`${API_URL}/v1/public/apps/${encodeURIComponent(publicId)}/forms${surface}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-idempotency-key": crypto.randomUUID(), "x-telegram-init-data": window.Telegram?.WebApp.initData ?? "" },
     body: JSON.stringify({ pageId, formKey, values }),

@@ -3,6 +3,7 @@ import type { EnvelopeTokenVault, SealedSecret } from "../crypto/token-vault.js"
 import { NotFoundError } from "../domain/errors.js";
 import type { TelegramApi, TelegramBotIdentity } from "../telegram/telegram-client.js";
 import { generateTelegramWebhookSecret, hashTelegramWebhookSecret } from "../telegram/telegram-webhook.js";
+import { hasMiniApp, type ProductKit } from "../domain/product-kit.js";
 
 export const connectBotInputSchema = z
   .object({
@@ -15,6 +16,7 @@ export const connectBotInputSchema = z
 export type ConnectBotInput = z.infer<typeof connectBotInputSchema>;
 
 export interface OwnedProject {
+  kit?: ProductKit;
   id: string;
   publicId: string;
 }
@@ -93,7 +95,11 @@ export class ConnectBotService {
     });
 
     try {
-      await this.telegram.setChatMenuButton(input.botToken, input.menuButtonText, miniAppUrl);
+      if (hasMiniApp(project.kit ?? "bot-app-site")) {
+        await this.telegram.setChatMenuButton(input.botToken, input.menuButtonText, miniAppUrl);
+      } else {
+        await this.telegram.clearChatMenuButton?.(input.botToken);
+      }
       if (webhookSecret !== undefined && reservation.publicIntegrationId !== undefined) {
         const webhookUrl = new URL(`/v1/telegram/webhooks/${reservation.publicIntegrationId}`, this.publicApiOrigin).toString();
         await this.telegram.setWebhook(input.botToken, { url: webhookUrl, secretToken: webhookSecret, allowedUpdates: ["message", "callback_query"], dropPendingUpdates: false });
@@ -112,7 +118,7 @@ export class ConnectBotService {
     return {
       botId: bot.id,
       ...(bot.username === undefined ? {} : { botUsername: bot.username }),
-      miniAppUrl,
+      miniAppUrl: hasMiniApp(project.kit ?? "bot-app-site") ? miniAppUrl : "",
       status: "active",
     };
   }

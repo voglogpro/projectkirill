@@ -3,6 +3,7 @@ import { transitionCheckout } from "../src/billing/checkout-state.js";
 import {
   assertCanActivateBot,
   assertCanCreateProject,
+  assertCanLaunchKit,
   resolveEntitlement,
 } from "../src/billing/entitlements.js";
 import { EntitlementError } from "../src/billing/errors.js";
@@ -26,6 +27,7 @@ describe("billing plans and entitlements", () => {
       maxProjects: 1,
       maxActiveBots: 0,
       canPublish: false,
+      supportedKits: [],
     });
     expect(() => assertCanActivateBot(entitlement, 0)).toThrow(EntitlementError);
   });
@@ -40,6 +42,31 @@ describe("billing plans and entitlements", () => {
     expect(() => assertCanActivateBot(entitlement, 1, false)).toThrow(EntitlementError);
     expect(() => assertCanCreateProject(entitlement, 1)).toThrow(EntitlementError);
   });
+
+  it("separates three text bots from one full-stack project at the same price", () => {
+    const now = new Date("2026-09-05T12:00:00Z");
+    const expiry = new Date("2026-10-05T12:00:00Z");
+    const trio = resolveEntitlement({ planCode: "trio", status: "active", currentPeriodEnd: expiry }, now);
+    const studio = resolveEntitlement({ planCode: "studio", status: "active", currentPeriodEnd: expiry }, now);
+    expect(BILLING_PLANS.studio).toMatchObject({ monthlyPriceMinor: 65_000, maxActiveBots: 1 });
+    expect(() => assertCanLaunchKit(trio, "bot", null, now)).not.toThrow();
+    for (const kit of ["bot-app", "bot-app-site"] as const) {
+      expect(() => assertCanLaunchKit(trio, kit, null, now)).toThrow(EntitlementError);
+      expect(() => assertCanLaunchKit(studio, kit, null, now)).not.toThrow();
+    }
+    expect(() => assertCanActivateBot(trio, 2)).not.toThrow();
+    expect(() => assertCanActivateBot(trio, 3)).toThrow(EntitlementError);
+    expect(() => assertCanActivateBot(studio, 1)).toThrow(EntitlementError);
+  });
+
+  it("honours only the remaining original paid period for legacy full-stack projects", () => {
+    const now = new Date("2026-09-05T12:00:00Z");
+    const solo = resolveEntitlement({ planCode: "solo", status: "active", currentPeriodEnd: new Date("2026-11-01") }, now);
+    expect(() => assertCanLaunchKit(solo, "bot-app-site", new Date("2026-10-01"), now)).not.toThrow();
+    expect(() => assertCanLaunchKit(solo, "bot-app-site", now, now)).toThrow(EntitlementError);
+    expect(() => assertCanActivateBot(resolveEntitlement(null), 1, true)).toThrow(EntitlementError);
+    expect(() => assertCanLaunchKit(resolveEntitlement(null), "bot-app-site", new Date("2026-10-01"), now)).toThrow(EntitlementError);
+  });
 });
 
 describe("checkout state machine", () => {
@@ -49,4 +76,3 @@ describe("checkout state machine", () => {
     expect(transitionCheckout("canceled", "succeeded")).toBe("canceled");
   });
 });
-

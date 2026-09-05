@@ -14,7 +14,7 @@ const responseSchema = z.object({
   metadata: z.object({
     checkout_id: z.uuid(),
     user_id: z.uuid(),
-    plan_code: z.enum(["solo", "trio"]),
+    plan_code: z.enum(["solo", "trio", "studio"]),
   }),
   confirmation: z.object({ confirmation_url: z.url() }).optional(),
   paid_at: z.iso.datetime({ offset: true }).optional(),
@@ -126,4 +126,3 @@ function rubToMinor(value: string): number {
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Invalid amount");
   return amount;
 }
-

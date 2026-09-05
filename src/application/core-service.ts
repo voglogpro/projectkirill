@@ -13,12 +13,13 @@ import {
   type PublicAppManifest,
 } from "../domain/core.js";
 import { pageDocumentSchema, type Block, type PageDocument } from "../domain/page-document.js";
+import type { ProductKit } from "../domain/product-kit.js";
 
 export interface CoreRepository {
-  createProject(ownerUserId: string, input: { name: string; slug: string; entryDocument: PageDocument }): Promise<ProjectRecord>;
+  createProject(ownerUserId: string, input: { name: string; slug: string; kit?: ProductKit; entryDocument: PageDocument }): Promise<ProjectRecord>;
   listProjects(ownerUserId: string): Promise<ProjectRecord[]>;
   getOwnedProject(ownerUserId: string, projectId: string): Promise<ProjectRecord | null>;
-  updateProject(ownerUserId: string, projectId: string, name: string): Promise<ProjectRecord | null>;
+  updateProject(ownerUserId: string, projectId: string, name?: string, kit?: ProductKit): Promise<ProjectRecord | null>;
   listPages(ownerUserId: string, projectId: string): Promise<PageRecord[] | null>;
   createPage(ownerUserId: string, projectId: string, input: { slug: string; title: string; document: PageDocument }): Promise<PageRecord | null>;
   updatePage(ownerUserId: string, projectId: string, pageId: string, input: { expectedRevision: number; title: string; document: PageDocument }): Promise<PageRecord | "revision_conflict" | null>;
@@ -26,7 +27,7 @@ export interface CoreRepository {
   getOwnedSnapshot(ownerUserId: string, projectId: string): Promise<ProjectSnapshot | null>;
   publishSnapshot(ownerUserId: string, snapshot: ProjectSnapshot, contentHash: string): Promise<PublicAppManifest | "revision_conflict">;
   createPreviewGrant(ownerUserId: string, projectId: string, tokenHash: string, expiresAt: Date): Promise<boolean>;
-  getPublicApp(publicId: string): Promise<PublicAppManifest | null>;
+  getPublicApp(publicId: string, surface?: "miniapp" | "site"): Promise<PublicAppManifest | null>;
   getPreviewApp(tokenHash: string): Promise<ProjectSnapshot | null>;
 }
 
@@ -72,7 +73,7 @@ export class CoreService {
 
   public async updateProject(ownerUserId: string, projectId: string, untrustedInput: unknown): Promise<ProjectRecord> {
     const input = updateProjectSchema.parse(untrustedInput);
-    const project = await this.repository.updateProject(ownerUserId, z.uuid().parse(projectId), input.name);
+    const project = await this.repository.updateProject(ownerUserId, z.uuid().parse(projectId), input.name, input.kit);
     if (project === null) throw new NotFoundError("Project not found");
     return project;
   }
@@ -129,8 +130,8 @@ export class CoreService {
     return { token, expiresAt: expiresAt.toISOString() };
   }
 
-  public async getPublicApp(publicId: string): Promise<PublicAppManifest> {
-    const app = await this.repository.getPublicApp(z.uuid().parse(publicId));
+  public async getPublicApp(publicId: string, surface: "miniapp" | "site" = "miniapp"): Promise<PublicAppManifest> {
+    const app = await this.repository.getPublicApp(z.uuid().parse(publicId), surface);
     if (app === null) throw new NotFoundError("Application not found");
     return app;
   }

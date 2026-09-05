@@ -7,7 +7,7 @@ import { resolveEntitlement, type Entitlement } from "./entitlements.js";
 
 const createCheckoutSchema = z
   .object({
-    planCode: z.enum(["solo", "trio"]),
+    planCode: z.enum(["solo", "trio", "studio"]),
     clientRequestId: z.uuid(),
   })
   .strict();

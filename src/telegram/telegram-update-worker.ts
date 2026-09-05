@@ -31,6 +31,7 @@ export interface TelegramUpdateJob {
   encryptedToken: SealedSecret;
   miniAppUrl: string;
   menuButtonText: string;
+  miniAppEnabled?: boolean;
   payload: TelegramUpdate;
 }
 
@@ -176,7 +177,7 @@ export class TelegramUpdateWorker {
       await this.telegram.sendMessage(token, {
         chatId: incoming.chatId,
         text: message.text,
-        buttons: message.buttons.map((button) => button.kind === "url" && button.url !== undefined
+        buttons: message.buttons.filter((button) => button.kind !== "miniapp" || job.miniAppEnabled !== false).map((button) => button.kind === "url" && button.url !== undefined
           ? { text: button.label, url: button.url }
           : button.kind === "miniapp"
             ? { text: button.label, webAppUrl: job.miniAppUrl }
@@ -192,8 +193,8 @@ export class TelegramUpdateWorker {
     const token = await this.tokenVault.open(job.encryptedToken, job.projectId);
     await this.telegram.sendMessage(token, {
       chatId: incoming.chatId,
-      text: this.startMessageText,
-      webAppButton: { text: job.menuButtonText, url: job.miniAppUrl },
+      text: job.miniAppEnabled === false ? "Бот готов. Владелец ещё настраивает сценарий." : this.startMessageText,
+      ...(job.miniAppEnabled === false ? {} : { webAppButton: { text: job.menuButtonText, url: job.miniAppUrl } }),
     });
   }
 }

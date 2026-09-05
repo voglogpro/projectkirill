@@ -2,9 +2,17 @@ import { ArrowRight, Bot, Check, Globe, LayoutGrid, MessageSquareText, Smartphon
 import type { FlowTemplateId } from "../flow-store";
 import type { ProductKit } from "../types";
 import { TemplateCatalog } from "./TemplateCatalog";
+import { ConstructorArtwork } from "./ProductArtwork";
 import "../start-hub.css";
 
 type Kit = { id: ProductKit; icon: typeof Bot; title: string; description: string; hosting: string };
+
+const hostingPlans: ReadonlyArray<{ kit: ProductKit; plan: "solo" | "trio" | "studio"; title: string; price: number; detail: string; icon: typeof Bot }> = [
+  { kit: "bot", plan: "solo", title: "Один текстовый бот", price: 350, detail: "1 бот · сообщения и цепочки", icon: MessageSquareText },
+  { kit: "bot", plan: "trio", title: "Три текстовых бота", price: 650, detail: "До 3 ботов · один тариф", icon: Bot },
+  { kit: "bot-app", plan: "studio", title: "Бот и Mini App", price: 650, detail: "1 бот + приложение", icon: Smartphone },
+  { kit: "bot-app-site", plan: "studio", title: "Бот, Mini App и сайт", price: 650, detail: "1 бот + приложение + сайт", icon: LayoutGrid },
+];
 
 const kits: readonly Kit[] = [
   { id: "bot", icon: MessageSquareText, title: "Текстовый бот", description: "Сообщения, кнопки и цепочки действий на холсте.", hosting: "Сценарий в Telegram" },
@@ -15,7 +23,7 @@ const kits: readonly Kit[] = [
 
 type StartHubProps = {
   projects: Array<{ id: string; name: string }>;
-  onPick: (kit: ProductKit) => void;
+  onPick: (kit: ProductKit, plan?: "solo" | "trio" | "studio") => void;
   onTemplate: (template: FlowTemplateId) => void;
   onOpenProject: (id: string) => void;
   onSkip: () => void;
@@ -23,7 +31,7 @@ type StartHubProps = {
   userName?: string;
 };
 
-/** Build first, pay at launch. Editor choices are not separate subscriptions. */
+/** All editor formats are free to explore; hosting depends on the published format. */
 export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, pending = false, userName }: StartHubProps) {
   return <main className="hub-v2">
     <header className="hub-v2-header">
@@ -65,10 +73,11 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
           <p>Все четыре доступны бесплатно. Пробуйте — существующий проект не изменится.</p>
         </div>
         <div className="hub-v2-kit-grid">
-          {kits.map(({ id, icon: Icon, title, description }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
-            <span className="hub-v2-kit-top"><Icon size={25} /><span>Бесплатно</span></span>
+          {kits.map(({ id, title, description }) => <button type="button" className={`hub-v2-kit hub-v2-kit-${id}`} key={id} onClick={() => onPick(id)} disabled={pending}>
+            <span className="hub-v2-kit-top"><span>Бесплатный редактор</span></span>
+            <ConstructorArtwork kit={id} />
             <h3>{title}</h3><p>{description}</p>
-            <span className="hub-v2-kit-cta">Открыть <ArrowRight size={17} /></span>
+            <span className="hub-v2-kit-cta">Попробовать <ArrowRight size={17} /></span>
           </button>)}
         </div>
         <p className="hub-v2-free"><Check size={16} />Карта и Premium не нужны. Оплата — только за запуск и хостинг.</p>
@@ -77,9 +86,9 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
 
       <section className="hub-v2-section" id="hub-templates" aria-labelledby="hub-templates-title">
         <div className="hub-v2-heading">
-          <span className="hub-v2-eyebrow">ГОТОВЫЕ СЦЕНАРИИ</span>
-          <h2 id="hub-templates-title">Выберите задачу для своего бота</h2>
-          <p>Посмотрите сценарий, возьмите за основу и адаптируйте под своё дело.</p>
+          <span className="hub-v2-eyebrow">ГОТОВЫЕ РЕШЕНИЯ</span>
+          <h2 id="hub-templates-title">Ваш бизнес. Уже собранный бот.</h2>
+          <p>Выберите задачу, проверьте бота в чате и поменяйте тексты под себя. Цепочки действий уже связаны — не нужно начинать с пустого холста.</p>
         </div>
         <TemplateCatalog onPick={onTemplate} pending={pending} showHeading={false} />
       </section>
@@ -88,17 +97,18 @@ export function StartHub({ projects, onPick, onTemplate, onOpenProject, onSkip, 
         <div className="hub-v2-heading">
           <span className="hub-v2-eyebrow">ОПЛАТА ПРИ ПУБЛИКАЦИИ</span>
           <h2 id="hub-pricing-title">Тарифы на запуск</h2>
-          <p>350 ₽/мес — один бот, 650 ₽/мес — до трёх. Редакторы и предпросмотр бесплатны.</p>
+          <p>Три текстовых бота или один бот с Mini App — 650 ₽/мес. Сборка и предпросмотр любого формата бесплатны.</p>
         </div>
         <div className="hub-v2-price-grid">
-          {kits.map(({ id, icon: Icon, title, hosting }) => <article className="hub-v2-price" key={id}>
+          {hostingPlans.map(({ kit, plan, icon: Icon, title, price, detail }, index) => <article className={`hub-v2-price hub-v2-price-${plan}`} key={`${kit}-${plan}`}>
+            <span className="hub-v2-price-label">{index === 1 ? "ДЛЯ НЕСКОЛЬКИХ ЗАДАЧ" : index > 1 ? "ОДИН ПРОЕКТ" : "ПРОСТОЙ СТАРТ"}</span>
             <Icon size={22} /><h3>{title}</h3>
-            <p className="hub-v2-price-value"><small>от </small>350 ₽<span>/ месяц</span></p>
-            <p className="hub-v2-price-detail">{hosting}<br />Хостинг включён</p>
-            <button type="button" onClick={() => onPick(id)} disabled={pending}>Собрать бесплатно</button>
+            <p className="hub-v2-price-value">{price} ₽<span>/ месяц</span></p>
+            <p className="hub-v2-price-detail">{detail}<br />Хостинг включён</p>
+            <button type="button" onClick={() => onPick(kit, plan)} disabled={pending}>Собрать бесплатно</button>
           </article>)}
         </div>
-        <p className="hub-v2-pricing-note">Это варианты одного проекта, а не отдельные подписки. Для публикации сайта сейчас также нужно подключить Telegram-бота. Кнопки открывают бесплатный конструктор — деньги не списываются.</p>
+        <p className="hub-v2-pricing-note">Пакет за 650 ₽ для трёх ботов подходит только текстовым ботам. Mini App и полный комплект — 650 ₽ за один проект; добавление сайта к Mini App цену не меняет. Кнопки открывают редактор без списания денег.</p>
       </section>
       <footer className="hub-v2-footer">KIRA · От идеи до работающего проекта</footer>
     </div>

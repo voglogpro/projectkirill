@@ -3,7 +3,7 @@ import "@xyflow/react/dist/style.css";
 import { ArrowLeft, CircleHelp, Clock, GitBranch, Hand, MessageSquareText, MousePointer2, MousePointerClick, Move, Play, Plus, Redo2, Rocket, SlidersHorizontal, Trash2, Undo2, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BotFlowDocument, FlowNode } from "../../../../src/domain/bot-flow";
-import { hasSession, loadRemoteFlow, publishRemoteFlow, saveRemoteFlow } from "../api";
+import { hasSession, loadRemoteFlow, saveRemoteFlow } from "../api";
 import { createFlowNode, exitsOf, nodeCatalog, saveFlow, type FlowNodeType } from "../flow-store";
 import { useCompact } from "../use-compact";
 import { canConnect, connectFlow, flowNodeLabel, replaceFlowNode } from "../flow-connections";
@@ -118,7 +118,7 @@ export function FlowEditor({ flow, projectId, localOnly = false, onChange, onBac
       if (cloudEnabled) {
         if (!remoteSaves.current) throw new Error("Сначала загрузите облачный сценарий: вернитесь в кабинет и откройте редактор заново.");
         await remoteSaves.current.save(currentFlow.current);
-        await publishRemoteFlow(projectId);
+        // The launch wizard checks format/entitlement before publication.
         setSaveState("saved");
       }
       onLaunch();

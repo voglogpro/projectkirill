@@ -1,7 +1,10 @@
 import type { Sql } from "postgres";
 import type { CoreEntitlementGate } from "../application/core-service.js";
 import type { BotActivationEntitlementGate } from "../application/connect-bot.js";
-import { assertCanActivateBot, assertCanCreateProject, resolveEntitlement } from "./entitlements.js";
+import { assertCanActivateBot, assertCanCreateProject, assertCanLaunchKit, resolveEntitlement } from "./entitlements.js";
+import type { ProductKit } from "../domain/product-kit.js";
+import { NotFoundError } from "../domain/errors.js";
+import { EntitlementError } from "./errors.js";
 import type { PaidBillingPlanCode } from "./plans.js";
 
 export class PostgresEntitlementGate implements CoreEntitlementGate, BotActivationEntitlementGate {
@@ -12,15 +15,18 @@ export class PostgresEntitlementGate implements CoreEntitlementGate, BotActivati
     assertCanCreateProject(resolveEntitlement(subscription, this.clock()), count);
   }
 
-  public async assertCanPublish(userId: string): Promise<void> {
+  public async assertCanPublish(userId: string, projectId: string): Promise<void> {
     const entitlement = resolveEntitlement(await this.subscription(userId), this.clock());
-    if (!entitlement.canPublish) {
-      const { EntitlementError } = await import("./errors.js");
-      throw new EntitlementError("Для публикации приложения требуется активный платный тариф");
-    }
+    const [project] = await this.sql<{ kit: ProductKit; legacy_full_access_until: Date | null; launch_allowed: boolean }[]>`
+      SELECT kit, legacy_full_access_until, project_launch_allowed(id) AS launch_allowed
+      FROM projects WHERE id = ${projectId} AND owner_user_id = ${userId}`;
+    if (!project) throw new NotFoundError("Project not found");
+    assertCanLaunchKit(entitlement, project.kit, project.legacy_full_access_until, this.clock());
+    if (!project.launch_allowed) throw new EntitlementError("Лимит опубликованных проектов исчерпан или проект приостановлен");
   }
 
   public async assertCanActivateBot(userId: string, projectId: string): Promise<void> {
+    await this.assertCanPublish(userId, projectId);
     const [subscription, rows] = await Promise.all([
       this.subscription(userId),
       this.sql<{ count: string; project_active: boolean }[]>`
